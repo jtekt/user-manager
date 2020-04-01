@@ -1,0 +1,38 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employee-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: employee-manager
+  template:
+    metadata:
+      labels:
+        app: employee-manager
+    spec:
+
+      containers:
+      - name: employee-manager
+        image: 172.16.98.151:5000/employee-manager
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8097
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: employee-manager
+  name: employee-manager
+spec:
+  ports:
+  - port: 8097
+    nodePort: 30097
+  selector:
+    app: employee-manager
+  type: LoadBalancer
