@@ -78,7 +78,7 @@ app.post('/personal_information_v2', check_authentication, function (req, res) {
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(division:Division)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(department:Department)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(section:Section)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektJtektGroup)
+    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektGroup)
     RETURN employee, workplace, division, department, section, group
     `, {
       employee_number: res.locals.user.properties.employee_number,
