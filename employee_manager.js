@@ -41,55 +41,29 @@ function check_authentication(req, res, next){
 }
 
 
+app.post('/get_own_node', check_authentication, function (req, res) {
+  // Route to retrieve one's information
+  res.send(res.locals.user)
+});
 
-
-app.post('/personal_information', check_authentication, function (req, res) {
-  // Route to retrive user information
-
-  // LEGACY
-
-  // Getting user info from Neo4J
+app.post('/get_nodes_related_to_own', check_authentication, function (req, res) {
+  // Route to retrieve one's information
   const session = driver.session();
   session
   .run(`
-    MATCH (e:Employee {employee_number:{employee_number}})
-    WITH e
-    OPTIONAL MATCH (e)-[:WORKS_IN]->(w:Workplace)
-    OPTIONAL MATCH (e)-[:BELONGS_TO]->(div:Division)
-    OPTIONAL MATCH (e)-[:BELONGS_TO]->(dep:Department)
-    OPTIONAL MATCH (e)-[:BELONGS_TO]->(s:Section)
-    OPTIONAL MATCH (e)-[:BELONGS_TO]->(g:Group)
-    RETURN e, g, w, div, dep, s
+    MATCH (employee:Employee {employee_number:{employee_number}})
+    WITH employee
+    MATCH (related_node)--(employee)
+    RETURN related_node
     `,
     {
       employee_number: res.locals.user.properties.employee_number,
     })
-  .then(result => {
-
-    if(result.records.length < 1){
-      res.send("Employee not found")
-    }
-    else {
-      // Employee has been found in the DB
-      var matching_record = result.records[0];
-
-      var employee_data = matching_record._fields[0].properties;
-
-      // Now work with workplaces and groups
-      for (var i = 1; i < result.records[0]._fields.length; i++) {
-        if(result.records[0]._fields[i]){
-          var label = result.records[0]._fields[i].labels[0].toLowerCase();
-          var name = result.records[0]._fields[i].properties.name;
-          employee_data[label] = name;
-        }
-      }
-      // Send the data
-      res.send(employee_data);
-    }
-  })
+  .then(result => { res.send(result.records); })
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
   .finally(() => session.close())
 });
+
 
 app.post('/personal_information_v2', check_authentication, function (req, res) {
   // Route to retrive the information of the user currently logged in
@@ -104,17 +78,17 @@ app.post('/personal_information_v2', check_authentication, function (req, res) {
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(division:Division)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(department:Department)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(section:Section)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:Group)
+    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektJtektGroup)
     RETURN employee, workplace, division, department, section, group
     `, {
       employee_number: res.locals.user.properties.employee_number,
     })
-  .then(result => {
-    res.send(result.records);
-  })
+  .then(result => { res.send(result.records); })
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
   .finally(() => session.close())
 });
+
+
 
 app.post('/employee_info_from_employee_number', check_authentication, function (req, res) {
 
@@ -128,14 +102,12 @@ app.post('/employee_info_from_employee_number', check_authentication, function (
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(division:Division)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(department:Department)
     OPTIONAL MATCH (employee)-[:BELONGS_TO]->(section:Section)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:Group)
+    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektGroup)
     RETURN employee, workplace, division, department, section, group
     `, {
       employee_number: req.body.employee_number,
     })
-  .then(result => {
-    res.send(result.records);
-  })
+  .then(result => { res.send(result.records); })
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
   .finally(() => session.close())
 });
@@ -177,7 +149,7 @@ app.post('/get_units_directly_belonging_to_node', function (req, res) {
   session
   .run(`
     // Build a map to get the target node label
-    WITH {Division: "Department", Department: "Section", Section: "Group"} AS hierarchy_map
+    WITH {Division: "Department", Department: "Section", Section: "JtektGroup"} AS hierarchy_map
 
     // Match the node itself and the parent it belongs to
     MATCH (n)<-[:BELONGS_TO]-(a)
