@@ -26,6 +26,7 @@ app.use(cors())
 app.use(express.static(path.join(__dirname, 'dist')));
 
 
+// Todo: replace by middleware
 function check_authentication(req, res, next){
 
   let token = req.headers.authorization.split(" ")[1];
@@ -41,13 +42,34 @@ function check_authentication(req, res, next){
 }
 
 
-app.post('/get_own_node', check_authentication, function (req, res) {
-  // Route to retrieve one's information
-  res.send(res.locals.user)
+app.post('/get_employee', check_authentication, (req, res) => {
+  // Route to retrieve an employee's data
+  // if employee number not specified, return one's own
+
+  if(!('employee_number' in req.body)) return res.send(res.locals.user)
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee {employee_number:{employee_number}})
+    RETURN employee
+    `,
+    {
+      employee_number: req.body.employee_number,
+    })
+  .then(result => { res.send(result.records[0].get('employee')) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+
+
 });
 
-app.post('/get_nodes_related_to_own', check_authentication, function (req, res) {
-  // Route to retrieve one's information
+app.post('/get_all_nodes_related_employee', check_authentication, (req, res) => {
+  // Route to retrieve nodes related to one employee
+
+  var employee_number = undefined;
+  if('employee_number' in req.body) employee_number = req.body.employee_number
+  else employee_number = res.locals.user.properties.employee_number
+
   const session = driver.session();
   session
   .run(`
@@ -57,15 +79,78 @@ app.post('/get_nodes_related_to_own', check_authentication, function (req, res) 
     RETURN related_node
     `,
     {
-      employee_number: res.locals.user.properties.employee_number,
+      employee_number: employee_number,
     })
-  .then(result => { res.send(result.records); })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-  .finally(() => session.close())
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
 });
 
 
-app.post('/personal_information_v2', check_authentication, function (req, res) {
+app.post('/get_groups_of_employee', check_authentication, (req, res) => {
+  // Route to retrieve a user's groups
+
+  var employee_number = undefined;
+  if('employee_number' in req.body) employee_number = req.body.employee_number
+  else employee_number = res.locals.user.properties.employee_number
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee {employee_number:{employee_number}})-[:BELONGS_TO]->(group)
+    RETURN group
+    `,
+    {
+      employee_number: employee_number,
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+})
+
+
+app.post('/get_workplaces_of_employee', check_authentication, (req, res) => {
+  // Route to retrieve a user's workplaces
+  // here it is assumed that an employee can have multiple workplaces
+
+  var employee_number = undefined;
+  if('employee_number' in req.body) employee_number = req.body.employee_number
+  else employee_number = res.locals.user.properties.employee_number
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee {employee_number:{employee_number}})-[:WORKS_IN]->(workplace:Workplace)
+    RETURN workplace
+    `,
+    {
+      employee_number: employee_number,
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+});
+
+app.post('/get_highest_hierarchy_groups', (req, res) => {
+  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
+  const session = driver.session();
+  session
+  .run(`
+    // TODO: Would be nice to specify label of node
+    MATCH (group)<-[:BELONGS_TO]-()
+    WHERE NOT (group)-[:BELONGS_TO]->()
+
+    // NOT SURE WHY DISTINCT NEEDED
+    RETURN DISTINCT(group)
+    `,
+    {})
+  .then(result => { res.send(result.records); })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+});
+
+
+app.post('/personal_information_v2', check_authentication, (req, res) => {
   // Route to retrive the information of the user currently logged in
   // STILL NOT IDEAL AS SOME NODES MIGHT BECOME USEFUL IN THE FUTURE
 
@@ -84,13 +169,15 @@ app.post('/personal_information_v2', check_authentication, function (req, res) {
       employee_number: res.locals.user.properties.employee_number,
     })
   .then(result => { res.send(result.records); })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-  .finally(() => session.close())
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
 });
 
 
 
-app.post('/employee_info_from_employee_number', check_authentication, function (req, res) {
+app.post('/employee_info_from_employee_number', check_authentication, (req, res) => {
+
+  // TODO: combine with personal information
 
   // Route to retrive the information of an employee by employee_number
   const session = driver.session();
