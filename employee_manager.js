@@ -1,8 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const path = require('path');
-const history = require('connect-history-api-fallback');
 const axios = require('axios')
 const neo4j = require('neo4j-driver').v1
 
@@ -19,12 +17,8 @@ var driver = neo4j.driver(
 )
 
 var app = express()
-app.use(history())
 app.use(bodyParser.json())
 app.use(cors())
-// Serving front end
-app.use(express.static(path.join(__dirname, 'dist')));
-
 
 // Todo: replace by middleware
 function check_authentication(req, res, next){
@@ -38,11 +32,11 @@ function check_authentication(req, res, next){
     next()
   })
   .catch(error => { res.status(400).send(error) })
-
 }
 
 function get_employee_id_for_viewing(req, res){
   if('employee_id' in req.body) return req.body.employee_id
+  else if('employee_id' in req.query) return req.query.employee_id
   else return res.locals.user.identity.low
 }
 
@@ -56,14 +50,33 @@ function get_employee_id_for_modification(req, res){
     }
     else return eq.body.employee_id
   }
-  // If not requiring particular employee, just apply to self
+  // If not requiring particular employee, just return self
   else return res.locals.user.identity.low
 }
 
 
-app.post('/get_employee', check_authentication, (req, res) => {
+
+app.get('/employee', (req, res) => {
   // Route to retrieve an employee's data
 
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee)
+    WHERE id(employee)=toInt({employee_id})
+    RETURN employee
+    `, {
+    employee_id: get_employee_id_for_viewing(req, res),
+  })
+  .then(result => { res.send(result.records[0].get('employee')) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+});
+
+app.post('/get_employee', (req, res) => {
+  // Route to retrieve an employee's data
+
+  // NOT RESTFUL
   const session = driver.session();
   session
   .run(`
@@ -77,11 +90,45 @@ app.post('/get_employee', check_authentication, (req, res) => {
   .then(result => { res.send(result.records[0].get('employee')) })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
-
-
 });
 
-app.post('/get_all_nodes_related_to_employee', check_authentication, (req, res) => {
+app.get('/find_employee', check_authentication, (req, res) => {
+  // Finding an employee using whichever of his properties
+
+  const session = driver.session();
+  session
+  .run(`
+    // Match all employees
+    MATCH (employee:Employee)
+
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH [key IN KEYS(employee) WHERE NOT key IN {exceptions}] AS keys, employee
+
+    // Unwinding
+    UNWIND keys as key
+
+    // Filter nodes by looking for properties
+    WITH key, employee
+    WHERE toLower(toStringemployeen[key])) CONTAINS toLower({query})
+
+    RETURN DISTINCT employee
+    LIMIT 200
+    `,
+    {
+      query: req.body.query,
+      exceptions: [
+        'password_hashed'
+      ]
+    })
+  .then(result => { res.send(result.records[0].get('employee')) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+});
+
+
+
+app.get('/nodes_related_to_employee', check_authentication, (req, res) => {
   // Route to retrieve nodes related to one employee
   // WARNING: Might respond with a lot of data
 
@@ -103,7 +150,7 @@ app.post('/get_all_nodes_related_to_employee', check_authentication, (req, res) 
 });
 
 
-app.post('/get_groups_of_employee', check_authentication, (req, res) => {
+app.get('/get_groups_of_employee', check_authentication, (req, res) => {
   // Route to retrieve a user's groups
 
   const session = driver.session();
@@ -121,8 +168,45 @@ app.post('/get_groups_of_employee', check_authentication, (req, res) => {
   .finally( () => { session.close() })
 })
 
+app.post('/get_groups_of_employee', check_authentication, (req, res) => {
+  // Route to retrieve a user's groups
+
+  // NOT RESTFUL
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee)-[:BELONGS_TO]->(group)
+    WHERE id(employee)=toInt({employee_id})
+    RETURN group
+    `,
+    {
+      employee_id: get_employee_id_for_viewing(req, res),
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+})
 
 
+app.get('/get_workplaces_of_employee', check_authentication, (req, res) => {
+  // Route to retrieve a user's workplaces
+  // here it is assumed that an employee can have multiple workplaces
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee)-[:WORKS_IN]->(workplace:Workplace)
+    WHERE id(employee)=toInt({employee_id})
+    RETURN workplace
+    `,
+    {
+      employee_id: get_employee_id_for_viewing(req, res),
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+})
 
 app.post('/get_workplaces_of_employee', check_authentication, (req, res) => {
   // Route to retrieve a user's workplaces
@@ -142,6 +226,8 @@ app.post('/get_workplaces_of_employee', check_authentication, (req, res) => {
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 })
+
+
 
 
 app.post('/join_workplace', check_authentication, (req, res) => {
@@ -257,6 +343,26 @@ app.post('/leave_group', check_authentication, (req, res) => {
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 })
+
+
+app.get('/top_level_groups', (req, res) => {
+  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
+
+  // TODO: Specify node label
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (group)<-[:BELONGS_TO]-()
+    WHERE NOT (group)-[:BELONGS_TO]->()
+
+    // NOT SURE WHY DISTINCT NEEDED
+    RETURN DISTINCT(group)
+    `, {})
+  .then(result => { res.send(result.records); })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+});
 
 app.post('/get_highest_hierarchy_groups', (req, res) => {
   // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
