@@ -35,8 +35,13 @@ function check_authentication(req, res, next){
 
 function get_employee_id_for_viewing(req, res){
   if('employee_id' in req.body) return req.body.employee_id
-  else if('employee_id' in req.query) return req.query.employee_id
-  else return res.locals.user.identity.low
+  if('employee_id' in req.query) return req.query.employee_id
+
+  if('user_id' in req.body) return req.body.user_id
+  if('user_id' in req.query) return req.query.user_id
+
+  // if nothing, just use the logged in user
+  return res.locals.user.identity.low
 }
 
 function get_employee_id_for_modification(req, res){
@@ -471,110 +476,26 @@ app.post('/get_users_of_group', function (req, res) {
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
 });
 
-////////////////////////
-// LEGACY from here
-///////////////
 
-app.post('/personal_information_v2', check_authentication, (req, res) => {
-  // Route to retrive the information of the user currently logged in
-  // STILL NOT IDEAL AS SOME NODES MIGHT BECOME USEFUL IN THE FUTURE
-
-  // REMOVE THIS AS SOON AS POSSIBLE
-
+app.post('/update_avatar_src', check_authentication, (req, res) => {
+  // Could be combined with route to update all employee information
   const session = driver.session();
   session
   .run(`
-    MATCH (employee:Employee {employee_number:{employee_number}})
-    WITH employee
-    OPTIONAL MATCH (employee)-[:WORKS_IN]->(workplace:Workplace)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(division:Division)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(department:Department)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(section:Section)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektGroup)
-    RETURN employee, workplace, division, department, section, group
+    MATCH (employee:Employee)
+    WHERE id(employee) = toInt({employee_id})
+    SET employee.avatar_src={avatar_src}
+    RETURN employee
     `, {
-      employee_number: res.locals.user.properties.employee_number,
+      employee_id: get_employee_id_for_modification(req, res),
+      avatar_src: req.body.avatar_src
     })
-  .then(result => { res.send(result.records); })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-
-
-app.post('/employee_info_from_employee_number', check_authentication, (req, res) => {
-
-  // TODO: combine with personal information
-
-  // Route to retrive the information of an employee by employee_number
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee {employee_number:{employee_number}})
-    WITH employee
-    OPTIONAL MATCH (employee)-[:WORKS_IN]->(workplace:Workplace)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(division:Division)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(department:Department)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(section:Section)
-    OPTIONAL MATCH (employee)-[:BELONGS_TO]->(group:JtektGroup)
-    RETURN employee, workplace, division, department, section, group
-    `, {
-      employee_number: req.body.employee_number,
-    })
-  .then(result => { res.send(result.records); })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-  .finally(() => session.close())
-});
-
-
-
-
-
-app.post('/get_all_divisions', function (req, res) {
-  // LEGACY
-  // Should be delete sometime soon
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (division:Division)
-    RETURN division
-    `,{})
   .then(result => {
     session.close();
     res.send(result.records);
   })
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
 });
-
-app.post('/get_units_directly_belonging_to_node', function (req, res) {
-  // THIS IS THE OLD ONE
-  // Should be deleted soon
-  const session = driver.session();
-  session
-  .run(`
-    // Build a map to get the target node label
-    WITH {Division: "Department", Department: "Section", Section: "JtektGroup"} AS hierarchy_map
-
-    // Match the node itself and the parent it belongs to
-    MATCH (n)<-[:BELONGS_TO]-(a)
-
-    // Using index is not good practice!
-    WHERE ID(n)={node_id} AND hierarchy_map[LABELS(n)[0]] IN LABELS(a)
-
-    RETURN a
-    `, {
-      node_id: req.body.node_id,
-    })
-  .then(result => {
-    session.close();
-    res.send(result.records)
-  })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-});
-
-
-
-
 
 
 
