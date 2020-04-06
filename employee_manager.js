@@ -6,7 +6,6 @@ const neo4j = require('neo4j-driver').v1
 
 const secrets = require('./secrets');
 
-
 const app_port = 8097;
 
 process.env.TZ = 'Asia/Tokyo';
@@ -56,7 +55,7 @@ function get_employee_id_for_modification(req, res){
 
 
 
-app.get('/employee', (req, res) => {
+app.get('/employee', check_authentication, (req, res) => {
   // Route to retrieve an employee's data
 
   const session = driver.session();
@@ -73,7 +72,7 @@ app.get('/employee', (req, res) => {
   .finally( () => { session.close() })
 });
 
-app.post('/get_employee', (req, res) => {
+app.post('/get_employee', check_authentication, (req, res) => {
   // Route to retrieve an employee's data
 
   // NOT RESTFUL
