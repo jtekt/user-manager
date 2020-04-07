@@ -46,16 +46,16 @@ function get_employee_id_for_viewing(req, res){
 
 function get_employee_id_for_modification(req, res){
 
-  if('employee_id' in req.body) {
-    if(res.locals.user.identity.low !== req.body.employee_id) {
-      // Does not get gaught by Neo4j catch!
-      res.status(403).send(`Cannot edit someone else's info`)
-      throw "Cannot edit someone else's info"
-    }
-    else return eq.body.employee_id
-  }
   // If not requiring particular employee, just return self
-  else return res.locals.user.identity.low
+  if(! ('employee_id' in req.body)) return res.locals.user.identity.low
+
+  if(res.locals.user.identity.low !== req.body.employee_id) {
+    // Does not get gaught by Neo4j catch!
+    res.status(403).send(`Cannot edit someone else's info`)
+    throw "Cannot edit someone else's info"
+  }
+  else return eq.body.employee_id
+
 }
 
 app.get('/employee', check_authentication, (req, res) => {
@@ -70,26 +70,10 @@ app.get('/employee', check_authentication, (req, res) => {
     `, {
     employee_id: get_employee_id_for_viewing(req, res),
   })
-  .then(result => { res.send(result.records[0].get('employee')) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-app.post('/get_employee', check_authentication, (req, res) => {
-  // Route to retrieve an employee's data
-
-  // NOT RESTFUL
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
-    RETURN employee
-    `,
-    {
-      employee_id: get_employee_id_for_viewing(req, res),
-    })
-  .then(result => { res.send(result.records[0].get('employee')) })
+  .then(result => {
+    if(result.records.length < 1) return res.status(404).send('Not found')
+    res.send(result.records[0].get('employee'))
+  })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 });
@@ -123,7 +107,10 @@ app.get('/find_employee', check_authentication, (req, res) => {
         'password_hashed'
       ]
     })
-  .then(result => { res.send(result.records[0].get('employee')) })
+  .then(result => {
+    if(result.records.length < 1) return res.status(404).send('Not found')
+    res.send(result.records[0].get('employee'))
+  })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 });
@@ -152,23 +139,6 @@ app.get('/nodes_related_to_employee', check_authentication, (req, res) => {
 });
 
 
-app.get('/groups_of_employee', check_authentication, (req, res) => {
-  // Route to retrieve a user's groups
-
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)-[:BELONGS_TO]->(group)
-    WHERE id(employee)=toInt({employee_id})
-    RETURN group
-    `,
-    {
-      employee_id: get_employee_id_for_viewing(req, res),
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-})
 
 
 
@@ -251,131 +221,6 @@ app.post('/leave_workplace', check_authentication, (req, res) => {
 })
 
 
-app.post('/join_group', check_authentication, (req, res) => {
-  // Route to join a group
-
-  const session = driver.session();
-  session
-  .run(`
-    // Find the employee
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
-
-    // Find the workplace
-    WITH employee
-    MATCH (group)
-    WHERE id(group)=toInt({group_id})
-
-    // MERGE relationship
-    MERGE (employee)-[:BELONGS_TO]->(group)
-
-    // Return
-    RETURN employee, group
-    `,
-    {
-      employee_id: get_employee_id_for_modification(req, res),
-      group_id: req.body.group_id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-})
-
-app.post('/leave_group', check_authentication, (req, res) => {
-  // Route to leave a group
-
-  const session = driver.session();
-  session
-  .run(`
-    // Find the employee and the workplace
-    MATCH (employee:Employee)-[r:BELONGS_TO]->(group)
-    WHERE id(employee)=toInt({employee_id}) AND id(group)=toInt({group_id})
-
-    // delete relationship
-    DELETE r
-
-    // Return
-    RETURN employee
-    `,
-    {
-      employee_id: get_employee_id_for_modification(req, res),
-      group_id: req.body.group_id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-})
-
-
-app.get('/top_level_groups', (req, res) => {
-  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
-
-  // TODO: Specify node label
-
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (group)<-[:BELONGS_TO]-()
-    WHERE NOT (group)-[:BELONGS_TO]->()
-
-    // NOT SURE WHY DISTINCT NEEDED
-    RETURN DISTINCT(group)
-    `, {})
-  .then(result => { res.send(result.records); })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-app.post('/get_highest_hierarchy_groups', (req, res) => {
-  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
-
-  // TODO: Replace with GET method hereabove
-
-  const session = driver.session();
-  session
-  .run(`
-    // TODO: Would be nice to specify label of node
-    MATCH (group)<-[:BELONGS_TO]-()
-    WHERE NOT (group)-[:BELONGS_TO]->()
-
-    // NOT SURE WHY DISTINCT NEEDED
-    RETURN DISTINCT(group)
-    `,
-    {})
-  .then(result => { res.send(result.records); })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-
-
-
-
-app.get('/groups_directly_belonging_to_group', (req, res) => {
-  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
-  const session = driver.session();
-  session
-  .run(`
-    // Match the parent node
-    MATCH (parent_group)
-    WHERE ID(parent_group)={node_id}
-
-    // Match children that only have a direct connection to parent
-    WITH parent_group
-    MATCH (parent_group)<-[:BELONGS_TO]-(group)
-    WHERE NOT group:Employee AND NOT (group)-[:BELONGS_TO]->()-[:BELONGS_TO]->(parent_group)
-
-    // DISTINCT JUST IN CASE
-    RETURN DISTINCT(group)
-    `,
-    {
-      node_id: req.query.node_id
-    })
-  .then(result => { res.send(result.records); })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
 app.post('/get_all_workplaces', function (req, res) {
   const session = driver.session();
   session
@@ -391,32 +236,6 @@ app.post('/get_all_workplaces', function (req, res) {
 
 });
 
-app.post('/get_groups_directly_belonging_to_group', (req, res) => {
-  // Route to retrieve the top level groups (i.e. groups that don't belong to any other group)
-
-  // NOT RESTFUL
-  const session = driver.session();
-  session
-  .run(`
-    // Match the parent node
-    MATCH (parent_group)
-    WHERE ID(parent_group)={node_id}
-
-    // Match children that only have a direct connection to parent
-    WITH parent_group
-    MATCH (parent_group)<-[:BELONGS_TO]-(group)
-    WHERE NOT group:Employee AND NOT (group)-[:BELONGS_TO]->()-[:BELONGS_TO]->(parent_group)
-
-    // DISTINCT JUST IN CASE
-    RETURN DISTINCT(group)
-    `,
-    {
-      node_id: req.body.node_id
-    })
-  .then(result => { res.send(result.records); })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
 
 app.get('/all_workplaces', (req, res) => {
   const session = driver.session();
@@ -442,73 +261,12 @@ app.get('/workplace', (req, res) => {
       id: req.query.id
     })
   .then(result => {
-    if(result.records.length === 0) return res.status(404).send('Workplace not found')
+    if(result.records.length < 1) return res.status(404).send('Workplace not found')
     res.send(result.records[0].get('workplace'))
   })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 });
-
-
-app.get('/group', (req, res) => {
-
-  const session = driver.session();
-  session
-  .run(`
-    // NOT SPECIFYING LABEL BECAUSE DB NOT READY YET
-    MATCH (group)
-    WHERE id(group)=toInt({id})
-    RETURN group
-    `,{
-      id: req.query.id
-    })
-  .then(result => {
-    if(result.records.length === 0) return res.status(404).send('Group not found')
-    res.send(result.records[0].get('group'))
-  })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-app.post('/users_of_group', function (req, res) {
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (n)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE id(n) = toInt({node_id})
-    RETURN employee
-    `, {
-      node_id: req.query.group_id,
-    })
-  .then(result => {
-    session.close();
-    res.send(result.records);
-  })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-});
-
-
-app.post('/get_users_of_group', function (req, res) {
-
-  // NOT RESTFUL
-
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (n)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE id(n) = {node_id}
-    RETURN employee
-    `, {
-      node_id: req.body.group_id,
-    })
-  .then(result => {
-    session.close();
-    res.send(result.records);
-  })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-});
-
-
 
 app.post('/update_avatar_src', check_authentication, (req, res) => {
   // Could be combined with route to update all employee information
@@ -523,35 +281,11 @@ app.post('/update_avatar_src', check_authentication, (req, res) => {
       employee_id: get_employee_id_for_modification(req, res),
       avatar_src: req.body.avatar_src
     })
-  .then(result => {
-    session.close();
-    res.send(result.records);
-  })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+    .then(result => { res.send(result.records) })
+    .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+    .finally( () => session.close())
 });
 
-
-////////////////////////
-////// TRASH /////////
-
-
-app.post('/get_employees_belonging_to_node', function (req, res) {
-  // SHOULD NOT BE USED ANYMORE
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (n)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE id(n) = {node_id}
-    RETURN employee
-    `, {
-      node_id: req.body.node_id,
-    })
-  .then(result => {
-    session.close();
-    res.send(result.records);
-  })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-});
 
 
 
