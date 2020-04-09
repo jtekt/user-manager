@@ -3,7 +3,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios')
 const neo4j = require('neo4j-driver').v1
-
 const secrets = require('./secrets');
 
 const app_port = 8097;
