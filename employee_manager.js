@@ -95,21 +95,18 @@ app.get('/find_employee', check_authentication, (req, res) => {
 
     // Filter nodes by looking for properties
     WITH key, employee
-    WHERE toLower(toStringemployeen[key])) CONTAINS toLower({query})
+    WHERE toLower(toString(employee[key])) CONTAINS toLower({query})
 
     RETURN DISTINCT employee
-    LIMIT 200
+    LIMIT 100
     `,
     {
-      query: req.body.query,
+      query: req.query.query,
       exceptions: [
         'password_hashed'
       ]
     })
-  .then(result => {
-    if(result.records.length < 1) return res.status(404).send('Not found')
-    res.send(result.records[0].get('employee'))
-  })
+  .then(result => { res.send(result.records) })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
 });
