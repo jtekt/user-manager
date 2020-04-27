@@ -1,9 +1,13 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+const express = require('express')
+const bodyParser = require('body-parser')
+const cors = require('cors')
 const axios = require('axios')
 const neo4j = require('neo4j-driver').v1
-const secrets = require('./secrets');
+const secrets = require('./secrets')
+const auth = require('@moreillon/authentication_middleware')
+const dotenv = require('dotenv')
+const bcrypt = require('bcrypt')
+dotenv.config();
 
 const app_port = 8097;
 
@@ -18,19 +22,6 @@ var app = express()
 app.use(bodyParser.json())
 app.use(cors())
 
-// Todo: replace by middleware
-function check_authentication(req, res, next){
-
-  let token = req.headers.authorization.split(" ")[1];
-  if(!token) return res.status(400).send(`No token in authorization header`)
-
-  axios.post(secrets.authentication_api_url, { jwt: token })
-  .then(response => {
-    res.locals.user = response.data
-    next()
-  })
-  .catch(error => { res.status(400).send(error) })
-}
 
 function get_employee_id_for_viewing(req, res){
   if('employee_id' in req.body) return req.body.employee_id
@@ -57,7 +48,7 @@ function get_employee_id_for_modification(req, res){
 
 }
 
-app.get('/employee', check_authentication, (req, res) => {
+app.get('/employee', auth.authenticate, (req, res) => {
   // Route to retrieve an employee's data
 
   const session = driver.session();
@@ -77,7 +68,7 @@ app.get('/employee', check_authentication, (req, res) => {
   .finally( () => { session.close() })
 });
 
-app.get('/find_employee', check_authentication, (req, res) => {
+app.get('/find_employee', auth.authenticate, (req, res) => {
   // Finding an employee using whichever of his properties
 
   const session = driver.session();
@@ -113,7 +104,7 @@ app.get('/find_employee', check_authentication, (req, res) => {
 
 
 
-app.get('/nodes_related_to_employee', check_authentication, (req, res) => {
+app.get('/nodes_related_to_employee', auth.authenticate, (req, res) => {
   // Route to retrieve nodes related to one employee
   // WARNING: Might respond with a lot of data
 
@@ -134,7 +125,7 @@ app.get('/nodes_related_to_employee', check_authentication, (req, res) => {
   .finally( () => { session.close() })
 });
 
-app.post('/update_avatar_src', check_authentication, (req, res) => {
+app.post('/update_avatar_src', auth.authenticate, (req, res) => {
   // Could be combined with route to update all employee information
   const session = driver.session();
   session
@@ -153,5 +144,55 @@ app.post('/update_avatar_src', check_authentication, (req, res) => {
 });
 
 
+app.post('/update_display_name', auth.authenticate, (req, res) => {
+  // Could be combined with route to update all employee information
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee)
+    WHERE id(employee) = toInt({employee_id})
+    SET employee.display_name={display_name}
+    RETURN employee
+    `, {
+      employee_id: get_employee_id_for_modification(req, res),
+      display_name: req.body.display_name
+    })
+    .then(result => { res.send(result.records) })
+    .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+    .finally( () => session.close())
+})
+
+app.post('/update_password', auth.authenticate, (req, res) => {
+
+  // Input sanitation
+  if(!('new_password' in req.body)) {
+    return res.status(400).send(`Password missing from body`)
+  }
+
+  // Hash the provided password
+  bcrypt.hash(req.body.new_password, 10, (err, hash) => {
+    if(err) return res.status(500).send(`Error hashing password: ${err}`)
+
+    const session = driver.session();
+    session
+    .run(`
+      // Find the user using ID
+      MATCH (employee:Employee)
+      WHERE id(employee) = toInt({employee_id})
+
+      // Set the new password
+      SET employee.password_hashed={new_password_hashed}
+
+      // Return employee once done
+      RETURN employee
+      `, {
+        employee_id: get_employee_id_for_modification(req, res),
+        new_password_hashed: hash
+      })
+      .then(result => { res.send(result.records) })
+      .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+      .finally( () => session.close())
+  })
+})
 
 app.listen(app_port, () => console.log(`Employee manager listening on port ${app_port}`))
