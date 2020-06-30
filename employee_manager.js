@@ -52,8 +52,12 @@ app.get('/', (req,res) => {
 })
 
 app.route('/employees/:employee_id')
-  .get(auth.authenticate,controller.get_employee)
-  .patch(auth.authenticate,controller.patch_employee)
+  .get(auth.authenticate, controller.get_employee)
+  .patch(auth.authenticate, controller.patch_employee)
+
+app.route('/employees/:employee_id/password')
+  .put(auth.authenticate, controller.update_password)
+
 
 /////////////
 // LEGACY //

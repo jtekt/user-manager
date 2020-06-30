@@ -2,32 +2,6 @@ const driver = require('../neo4j_driver.js')
 const bcrypt = require('bcrypt')
 
 
-function get_employee_id_for_viewing(req, res){
-  if('employee_id' in req.body) return req.body.employee_id
-  if('employee_id' in req.query) return req.query.employee_id
-
-  if('user_id' in req.body) return req.body.user_id
-  if('user_id' in req.query) return req.query.user_id
-
-  // if nothing, just use the logged in user
-  return res.locals.user.identity.low
-}
-
-function get_employee_id_for_modification(req, res){
-
-  // If not requiring particular employee, just return self
-  if(! ('employee_id' in req.body)) return res.locals.user.identity.low
-
-  if(res.locals.user.identity.low !== req.body.employee_id) {
-    // Does not get gaught by Neo4j catch!
-    res.status(403).send(`Cannot edit someone else's info`)
-    throw "Cannot edit someone else's info"
-  }
-  else return eq.body.employee_id
-
-}
-
-
 exports.get_employee = (req, res) => {
   // Route to retrieve an employee's data
 
@@ -124,6 +98,18 @@ exports.update_password = (req, res) => {
     return res.status(400).send(`Password missing from body`)
   }
 
+  // get the ID of the current user
+  let current_user_id = res.locals.user.identity.low
+
+  // Retrieve user ID
+  let employee_id = req.params.employee_id
+  if(employee_id === 'self') employee_id = current_user_id
+
+  // Prevent an user from modifying another's password
+  if(employee_id !== current_user_id && !res.locals.user.properties.isAdmin) {
+    return res.status(403).send(`Unauthorized to modify another user's password`)
+  }
+
   // Hash the provided password
   bcrypt.hash(req.body.new_password, 10, (err, hash) => {
     if(err) return res.status(500).send(`Error hashing password: ${err}`)
@@ -141,7 +127,7 @@ exports.update_password = (req, res) => {
       // Return employee once done
       RETURN employee
       `, {
-        employee_id: get_employee_id_for_modification(req, res),
+        employee_id: employee_id,
         new_password_hashed: hash
       })
       .then(result => { res.send(result.records) })
