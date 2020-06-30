@@ -15,7 +15,7 @@ COPY . .
 RUN npm install
 
 # Expose port
-EXPOSE 8097
+EXPOSE 80
 
 # Run the app
 CMD [ "node", "employee_manager.js" ]
