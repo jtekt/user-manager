@@ -7,20 +7,15 @@ const secrets = require('./secrets')
 const auth = require('@moreillon/authentication_middleware')
 const dotenv = require('dotenv')
 const bcrypt = require('bcrypt')
-dotenv.config();
 
-const app_port = 8097;
+dotenv.config()
+
+const driver = require('./neo4j_driver.js')
+const controller = require('./controllers/employee.js')
+
+const app_port = process.env.APP_PORT || 80
 
 process.env.TZ = 'Asia/Tokyo';
-
-var driver = neo4j.driver(
-  secrets.neo4j.url,
-  neo4j.auth.basic(secrets.neo4j.username, secrets.neo4j.password)
-)
-
-var app = express()
-app.use(bodyParser.json())
-app.use(cors())
 
 
 function get_employee_id_for_viewing(req, res){
@@ -48,6 +43,15 @@ function get_employee_id_for_modification(req, res){
 
 }
 
+
+var app = express()
+app.use(bodyParser.json())
+app.use(cors())
+
+app.route('/employees/:employee_id')
+  .get(auth.authenticate,controller.get_employee)
+  .patch(auth.authenticate,controller.patch_employee)
+
 app.get('/employee', auth.authenticate, (req, res) => {
   // Route to retrieve an employee's data
 
@@ -66,7 +70,7 @@ app.get('/employee', auth.authenticate, (req, res) => {
   })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
   .finally( () => { session.close() })
-});
+})
 
 app.get('/find_employee', auth.authenticate, (req, res) => {
   // Finding an employee using whichever of his properties

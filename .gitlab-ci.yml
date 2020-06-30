@@ -32,9 +32,11 @@ containerization:
 deployment:
   stage: deployment
   script:
+    # create/update the deployment
     - envsubst < deployment.yml | kubectl apply -f -
+    # Pull latest image of deployment
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:
-    name: staging
+    name: production
     kubernetes:
-      namespace: ${KUBERNETES_NAMESPACE}
+      namespace: ${KUBERNETES_NAMESPACE} # Obtained from GitLab
