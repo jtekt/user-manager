@@ -41,6 +41,8 @@ exports.get_employee = (req, res) => {
     || req.body.employee_id
     || res.locals.user.identity.low
 
+  if(employee_id === 'self') employee_id = res.locals.user.identity.low
+
   const session = driver.session();
   session
   .run(`
@@ -53,7 +55,10 @@ exports.get_employee = (req, res) => {
     employee_id: employee_id,
   })
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .catch(error => {
+    console.error(error)
+    res.status(400).send(`Error accessing DB: ${error}`)
+  })
   .finally( () => { session.close() })
 }
 
