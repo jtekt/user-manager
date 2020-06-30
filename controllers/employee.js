@@ -135,3 +135,24 @@ exports.update_password = (req, res) => {
       .finally( () => session.close())
   })
 }
+
+exports.get_nodes_related_to_employee = (req, res) => {
+  // Route to retrieve nodes related to one employee
+  // WARNING: Might respond with a lot of data
+
+  const session = driver.session();
+  session
+  .run(`
+    MATCH (employee:Employee)
+    WHERE id(employee)=toInt({employee_id})
+    WITH employee
+    MATCH (related_node)--(employee)
+    RETURN related_node
+    `,
+    {
+      employee_id: get_employee_id_for_viewing(req, res),
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+}

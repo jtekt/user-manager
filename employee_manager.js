@@ -58,6 +58,8 @@ app.route('/employees/:employee_id')
 app.route('/employees/:employee_id/password')
   .put(auth.authenticate, controller.update_password)
 
+app.route('/employees/:employee_id/related_nodes')
+  .put(auth.authenticate, controller.get_nodes_related_to_employee)
 
 /////////////
 // LEGACY //
@@ -119,95 +121,8 @@ app.get('/find_employee', auth.authenticate, (req, res) => {
 
 
 
-app.get('/nodes_related_to_employee', auth.authenticate, (req, res) => {
-  // Route to retrieve nodes related to one employee
-  // WARNING: Might respond with a lot of data
-
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
-    WITH employee
-    MATCH (related_node)--(employee)
-    RETURN related_node
-    `,
-    {
-      employee_id: get_employee_id_for_viewing(req, res),
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-});
-
-app.post('/update_avatar_src', auth.authenticate, (req, res) => {
-  // Could be combined with route to update all employee information
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)
-    WHERE id(employee) = toInt({employee_id})
-    SET employee.avatar_src={avatar_src}
-    RETURN employee
-    `, {
-      employee_id: get_employee_id_for_modification(req, res),
-      avatar_src: req.body.avatar_src
-    })
-    .then(result => { res.send(result.records) })
-    .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-    .finally( () => session.close())
-});
+app.get('/nodes_related_to_employee', auth.authenticate, controller.get_nodes_related_to_employee);
 
 
-app.post('/update_display_name', auth.authenticate, (req, res) => {
-  // Could be combined with route to update all employee information
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)
-    WHERE id(employee) = toInt({employee_id})
-    SET employee.display_name={display_name}
-    RETURN employee
-    `, {
-      employee_id: get_employee_id_for_modification(req, res),
-      display_name: req.body.display_name
-    })
-    .then(result => { res.send(result.records) })
-    .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-    .finally( () => session.close())
-})
-
-app.post('/update_password', auth.authenticate, (req, res) => {
-
-  // Input sanitation
-  if(!('new_password' in req.body)) {
-    return res.status(400).send(`Password missing from body`)
-  }
-
-  // Hash the provided password
-  bcrypt.hash(req.body.new_password, 10, (err, hash) => {
-    if(err) return res.status(500).send(`Error hashing password: ${err}`)
-
-    const session = driver.session();
-    session
-    .run(`
-      // Find the user using ID
-      MATCH (employee:Employee)
-      WHERE id(employee) = toInt({employee_id})
-
-      // Set the new password
-      SET employee.password_hashed={new_password_hashed}
-
-      // Return employee once done
-      RETURN employee
-      `, {
-        employee_id: get_employee_id_for_modification(req, res),
-        new_password_hashed: hash
-      })
-      .then(result => { res.send(result.records) })
-      .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-      .finally( () => session.close())
-  })
-})
 
 app.listen(app_port, () => console.log(`Employee manager listening on port ${app_port}`))
