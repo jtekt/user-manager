@@ -48,9 +48,17 @@ var app = express()
 app.use(bodyParser.json())
 app.use(cors())
 
+app.get('/', (req,res) => {
+  res.send('Employee manager API, Maxime MOREILLON')
+})
+
 app.route('/employees/:employee_id')
   .get(auth.authenticate,controller.get_employee)
   .patch(auth.authenticate,controller.patch_employee)
+
+/////////////
+// LEGACY //
+////////////
 
 app.get('/employee', auth.authenticate, (req, res) => {
   // Route to retrieve an employee's data

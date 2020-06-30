@@ -1,5 +1,4 @@
 stages:
-  - test
   - containerization
   - deployment
 
@@ -7,10 +6,6 @@ variables:
   APPLICATION_NAME: employee-manager
   DOCKER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME} # CONTAINER_REGISTRY is set by GitLab
 
-test:
-  stage: test
-  script:
-    - echo "No tests"
 
 containerization:
   stage: containerization
@@ -21,9 +16,6 @@ containerization:
       then echo "CONTAINER_REGISTRY_PASSWORD not set, skipping login";
       else echo "${CONTAINER_REGISTRY_PASSWORD}" | docker login ${CONTAINER_REGISTRY} --username ${CONTAINER_REGISTRY_USERNAME} --password-stdin;
       fi
-    # Copy env vars from GitLab
-    - cp ${ENV} ./.env
-    - cp ${SECRETS} ./secrets.js
     # Push to Docker registry
     - docker build -t ${DOCKER_IMAGE} .
     - docker push ${DOCKER_IMAGE}
