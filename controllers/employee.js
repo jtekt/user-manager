@@ -10,9 +10,6 @@ exports.get_employee = (req, res) => {
     || req.query.id
     || req.query.user_id
     || req.query.employee_id
-    || req.body.id
-    || req.body.user_id
-    || req.body.employee_id
     || res.locals.user.identity.low
 
   if(employee_id === 'self') employee_id = res.locals.user.identity.low
@@ -151,6 +148,40 @@ exports.get_nodes_related_to_employee = (req, res) => {
     `,
     {
       employee_id: get_employee_id_for_viewing(req, res),
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .finally( () => { session.close() })
+}
+
+exports.find_employee = (req, res) => {
+  // Finding an employee using whichever of his properties
+
+  const session = driver.session();
+  session
+  .run(`
+    // Match all employees
+    MATCH (employee:Employee)
+
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH [key IN KEYS(employee) WHERE NOT key IN {exceptions}] AS keys, employee
+
+    // Unwinding
+    UNWIND keys as key
+
+    // Filter nodes by looking for properties
+    WITH key, employee
+    WHERE toLower(toString(employee[key])) CONTAINS toLower({query})
+
+    RETURN DISTINCT employee
+    LIMIT 100
+    `,
+    {
+      query: req.query.query,
+      exceptions: [
+        'password_hashed'
+      ]
     })
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
