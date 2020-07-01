@@ -53,11 +53,14 @@ exports.patch_employee = (req, res) => {
     'first_name',
     'last_name',
     'name_kanji',
-    'name_romaji',
     'first_name_kanji',
     'family_name_kanji',
+    'name_romaji',
     'first_name_romaji',
     'family_name_romaji',
+    'name_katakana',
+    'first_name_katakana',
+    'family_name_katakana',
     'avatar_src',
   ]
 
