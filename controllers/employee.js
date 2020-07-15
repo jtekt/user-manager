@@ -51,7 +51,8 @@ exports.patch_employee = (req, res) => {
   let customizable_fields = [
     'display_name',
     'first_name',
-    'last_name',
+    'family_name',
+    'last_name', // Should not exist
     'name_kanji',
     'first_name_kanji',
     'family_name_kanji',
@@ -187,6 +188,9 @@ exports.find_employee = (req, res) => {
       ]
     })
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(400).send(`Error accessing DB: ${error}`)
+  })
   .finally( () => { session.close() })
 }
