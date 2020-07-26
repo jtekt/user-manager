@@ -49,6 +49,7 @@ exports.patch_employee = (req, res) => {
   }
 
   let customizable_fields = [
+    // Name related
     'display_name',
     'first_name',
     'family_name',
@@ -62,7 +63,11 @@ exports.patch_employee = (req, res) => {
     'name_katakana',
     'first_name_katakana',
     'family_name_katakana',
+    // Misc
     'avatar_src',
+    // for 行先掲示板
+    'presence',
+    'current_location',
   ]
 
   // prevent user from modifying disallowed properties
