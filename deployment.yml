@@ -22,6 +22,9 @@ spec:
         envFrom:
         - secretRef:
            name: environment-variables
+       # Credentials to pull image from registry
+      imagePullSecrets:
+      - name: registry-credentials
 ---
 apiVersion: v1
 kind: Service
