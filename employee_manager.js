@@ -14,10 +14,14 @@ const APP_PORT = process.env.APP_PORT || 80
 // Time zone
 process.env.TZ = 'Asia/Tokyo';
 
+// Create the administrator account if it does not exist
+controller.create_admin_if_not_exists()
 
 var app = express()
 app.use(bodyParser.json())
 app.use(cors())
+
+// TODO: AUTHENTICATION
 
 app.get('/', (req, res) => {
   res.send({
@@ -36,7 +40,6 @@ app.route('/employee')
 app.route('/employees/find')
   .get(auth.authenticate, controller.find_employee)
 
-
 app.route('/employees/:employee_id')
   .get(auth.authenticate, controller.get_employee)
   .patch(auth.authenticate, controller.patch_employee)
@@ -44,16 +47,11 @@ app.route('/employees/:employee_id')
 app.route('/employees/:employee_id/password')
   .put(auth.authenticate, controller.update_password)
 
+/*
 app.route('/employees/:employee_id/related_nodes')
-  .put(auth.authenticate, controller.get_nodes_related_to_employee)
+  .get(auth.authenticate, controller.get_nodes_related_to_employee)
 
-/////////////
-// LEGACY //
-////////////
-
-app.get('/employee', auth.authenticate, controller.get_employee)
-app.get('/find_employee', auth.authenticate, controller.find_employee);
-app.get('/nodes_related_to_employee', auth.authenticate, controller.get_nodes_related_to_employee);
+*/
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`Employee manager listening on port ${APP_PORT}`))

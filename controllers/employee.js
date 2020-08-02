@@ -142,26 +142,6 @@ exports.update_password = (req, res) => {
   })
 }
 
-exports.get_nodes_related_to_employee = (req, res) => {
-  // Route to retrieve nodes related to one employee
-  // WARNING: Might respond with a lot of data
-
-  const session = driver.session();
-  session
-  .run(`
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
-    WITH employee
-    MATCH (related_node)--(employee)
-    RETURN related_node
-    `,
-    {
-      employee_id: get_employee_id_for_viewing(req, res),
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(400).send(`Error accessing DB: ${error}`) })
-  .finally( () => { session.close() })
-}
 
 exports.find_employee = (req, res) => {
   // Finding an employee using whichever of his properties
@@ -198,4 +178,50 @@ exports.find_employee = (req, res) => {
     res.status(400).send(`Error accessing DB: ${error}`)
   })
   .finally( () => { session.close() })
+}
+
+
+exports.create_admin_if_not_exists = () => {
+
+  let default_admin_password = process.env.DEFAULT_ADMIN_PASSWORD
+    || 'administrator'
+
+  bcrypt.hash(default_admin_password, 10, (err, hash) => {
+    if(err) return res.status(500).send(`Error hashing password: ${err}`)
+
+    const session = driver.session();
+    session
+    .run(`
+      // Find the administrator account or create it if it does not exist
+      MERGE (administrator:User {username:"administrator"})
+
+      // Make the administrator an actual administrator
+      SET administrator.isAdmin = true
+
+      // Check if the administrator account is missing its password
+      // If the administrator account does not have a password (newly created), set it
+      WITH administrator
+      WHERE NOT EXISTS(administrator.password_hashed)
+      SET administrator.password_hashed = {default_admin_password_hashed}
+
+      // Set some additional properties
+      SET administrator.display_name = 'Administrator'
+
+      // Return the account
+      RETURN 'OK'
+      `, {
+        default_admin_password_hashed: hash
+      })
+      .then(result => {
+        if(result.records.length > 0) {
+          console.log(`Administrator account created`)
+        }
+        else {
+          console.log(`Administrator already existed`)
+        }
+
+      })
+      .catch(error => { console.log(error)})
+      .finally( () => session.close())
+  })
 }
