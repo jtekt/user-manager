@@ -20,6 +20,7 @@ controller.create_admin_if_not_exists()
 var app = express()
 app.use(bodyParser.json())
 app.use(cors())
+app.use(auth.authenticate)
 
 // TODO: AUTHENTICATION
 
@@ -35,23 +36,18 @@ app.get('/', (req, res) => {
 
 
 app.route('/employee')
-  .get(auth.authenticate, controller.get_employee)
+  .get(controller.get_employee)
 
 app.route('/employees/find')
-  .get(auth.authenticate, controller.find_employee)
+  .get(controller.find_employee)
 
 app.route('/employees/:employee_id')
-  .get(auth.authenticate, controller.get_employee)
-  .patch(auth.authenticate, controller.patch_employee)
+  .get(controller.get_employee)
+  .patch(controller.patch_employee)
 
 app.route('/employees/:employee_id/password')
-  .put(auth.authenticate, controller.update_password)
+  .put(controller.update_password)
 
-/*
-app.route('/employees/:employee_id/related_nodes')
-  .get(auth.authenticate, controller.get_nodes_related_to_employee)
-
-*/
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`Employee manager listening on port ${APP_PORT}`))
