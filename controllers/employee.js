@@ -215,13 +215,18 @@ exports.create_admin_if_not_exists = () => {
       .then(result => {
         if(result.records.length > 0) {
           console.log(`Administrator account created`)
+          require('../employee_manager.js').last_message = 'Administrator account created'
         }
         else {
           console.log(`Administrator already existed`)
+          require('../employee_manager.js').last_message = 'Administrator account already existed'
         }
 
       })
-      .catch(error => { console.log(error)})
+      .catch(error => {
+        console.log(error)
+        require('../employee_manager.js').last_message = error
+      })
       .finally( () => session.close())
   })
 }
