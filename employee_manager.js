@@ -14,7 +14,6 @@ const APP_PORT = process.env.APP_PORT || 80
 // Time zone
 process.env.TZ = 'Asia/Tokyo'
 
-exports.last_message = 'Application started'
 
 // Create the administrator account if it does not exist
 controller.create_admin_if_not_exists()
@@ -30,7 +29,6 @@ app.get('/', (req, res) => {
     version: pjson.version,
     neo4j_url: process.env.NEO4J_URL,
     authentication_api_url: process.env.AUTHENTICATION_API_URL,
-    last_message: exports.last_message,
   })
 })
 
