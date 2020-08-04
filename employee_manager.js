@@ -48,10 +48,10 @@ app.route('/:employee_id/password')
 app.use('/employees', router)
 
 
-/*
+
 app.route('/employee')
-  .get(controller.get_employee)
-*/
+  .get(auth.authenticate, controller.get_employee)
+
 
 
 
