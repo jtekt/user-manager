@@ -154,7 +154,7 @@ exports.find_employee = (req, res) => {
 
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(employee) WHERE NOT key IN {exceptions}] AS keys, employee
+    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
 
     // Unwinding
     UNWIND keys as key
