@@ -20,9 +20,6 @@ controller.create_admin_if_not_exists()
 var app = express()
 app.use(bodyParser.json())
 app.use(cors())
-app.use(auth.authenticate)
-
-// TODO: AUTHENTICATION
 
 app.get('/', (req, res) => {
   res.send({
@@ -34,19 +31,29 @@ app.get('/', (req, res) => {
   })
 })
 
+const router = express.Router()
 
-app.route('/employee')
-  .get(controller.get_employee)
+router.use(auth.authenticate)
 
-app.route('/employees/find')
+router.route('/find')
   .get(controller.find_employee)
 
-app.route('/employees/:employee_id')
+app.route('/:employee_id')
   .get(controller.get_employee)
   .patch(controller.patch_employee)
 
-app.route('/employees/:employee_id/password')
+app.route('/:employee_id/password')
   .put(controller.update_password)
+
+app.use('/employees', router)
+
+
+/*
+app.route('/employee')
+  .get(controller.get_employee)
+*/
+
+
 
 
 // Start the server
