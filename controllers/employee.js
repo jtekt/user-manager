@@ -19,7 +19,7 @@ exports.get_employee = (req, res) => {
   .run(`
     // Find the employee using the ID
     MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
+    WHERE id(employee)=toInteger($employee_id)
 
     RETURN employee
     `, {
@@ -80,11 +80,11 @@ exports.patch_employee = (req, res) => {
   .run(`
     // Find the group
     MATCH (employee:Employee)
-    WHERE id(employee)=toInt({employee_id})
+    WHERE id(employee)=toInteger($employee_id)
 
     // Patch properties
     // += implies update of existing properties
-    SET employee += {properties}
+    SET employee += $properties
 
     RETURN employee
     `, {
@@ -125,10 +125,10 @@ exports.update_password = (req, res) => {
     .run(`
       // Find the user using ID
       MATCH (employee:Employee)
-      WHERE id(employee) = toInt({employee_id})
+      WHERE id(employee) = toInteger($employee_id)
 
       // Set the new password
-      SET employee.password_hashed={new_password_hashed}
+      SET employee.password_hashed = $new_password_hashed
 
       // Return employee once done
       RETURN employee
@@ -161,7 +161,7 @@ exports.find_employee = (req, res) => {
 
     // Filter nodes by looking for properties
     WITH key, employee
-    WHERE toLower(toString(employee[key])) CONTAINS toLower({query})
+    WHERE toLower(toString(employee[key])) CONTAINS toLower($query)
 
     RETURN DISTINCT employee
     LIMIT 100
@@ -193,7 +193,7 @@ exports.create_admin_if_not_exists = () => {
     session
     .run(`
       // Find the administrator account or create it if it does not exist
-      MERGE (administrator:User {username:"administrator"})
+      MERGE (administrator:User:Employee {username:"administrator"})
 
       // Make the administrator an actual administrator
       SET administrator.isAdmin = true
@@ -202,7 +202,7 @@ exports.create_admin_if_not_exists = () => {
       // If the administrator account does not have a password (newly created), set it
       WITH administrator
       WHERE NOT EXISTS(administrator.password_hashed)
-      SET administrator.password_hashed = {default_admin_password_hashed}
+      SET administrator.password_hashed = $default_admin_password_hashed
 
       // Set some additional properties
       SET administrator.display_name = 'Administrator'
