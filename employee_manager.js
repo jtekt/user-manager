@@ -47,7 +47,7 @@ router.route('/:employee_id/password')
   .put(controller.update_password)
 
 // use the router
-router.use('/employees', router)
+app.use('/employees', router)
 
 
 /*
