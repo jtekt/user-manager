@@ -43,7 +43,7 @@ exports.patch_employee = (req, res) => {
 
   // Prevent normal users to modify another user
   if(!res.locals.user.properties.isAdmin){
-    if(user_id !== current_user_id) {
+    if(user_id != current_user_id) {
       return res.status(403).send(`Unauthorized to modify another user's data`)
     }
   }
