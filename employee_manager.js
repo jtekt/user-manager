@@ -39,20 +39,21 @@ router.use(auth.authenticate)
 router.route('/find')
   .get(controller.find_employee)
 
-app.route('/:employee_id')
+router.route('/:employee_id')
   .get(controller.get_employee)
   .patch(controller.patch_employee)
 
-app.route('/:employee_id/password')
+router.route('/:employee_id/password')
   .put(controller.update_password)
 
-app.use('/employees', router)
+// use the router
+router.use('/employees', router)
 
 
-
+/*
 app.route('/employee')
   .get(auth.authenticate, controller.get_employee)
-
+*/
 
 
 
