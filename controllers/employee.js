@@ -100,9 +100,9 @@ exports.patch_employee = (req, res) => {
 exports.update_password = (req, res) => {
 
   // Input sanitation
-  if(!('new_password' in req.body)) {
-    return res.status(400).send(`Password missing from body`)
-  }
+  if(!('new_password' in req.body)) return res.status(400).send(`New nassword missing`)
+  if(!('new_password_confirm' in req.body)) return res.status(400).send(`New password confirm missing`)
+
 
   // get the ID of the current user
   let current_user_id = res.locals.user.identity.low
@@ -116,30 +116,66 @@ exports.update_password = (req, res) => {
     return res.status(403).send(`Unauthorized to modify another user's password`)
   }
 
-  // Hash the provided password
-  bcrypt.hash(req.body.new_password, 10, (err, hash) => {
-    if(err) return res.status(500).send(`Error hashing password: ${err}`)
+  if(!res.locals.user.properties.isAdmin && !('current_password' in req.body)) return res.status(400).send(`Current password missing`)
 
-    const session = driver.session();
-    session
-    .run(`
-      // Find the user using ID
-      MATCH (employee:Employee)
-      WHERE id(employee) = toInteger($employee_id)
 
-      // Set the new password
-      SET employee.password_hashed = $new_password_hashed
+  const rx_session = driver.session()
+  rx_session.run(`
+    // Find the user using ID
+    MATCH (employee:Employee)
+    WHERE id(employee) = toInteger($employee_id)
 
-      // Return employee once done
-      RETURN employee
-      `, {
-        employee_id: employee_id,
-        new_password_hashed: hash
+    // Return employee once done
+    RETURN employee.password_hashed as password
+    `, {
+      employee_id: employee_id,
+    })
+  .then(result => {
+    let current_password_hashed = result.records[0].get('password')
+    bcrypt.compare(req.body.current_password, current_password_hashed, (err, result) => {
+      // Current password must be correct for non-admins
+      if(!res.locals.user.properties.isAdmin){
+        if(err) return res.status(500).send('Error verifying current password')
+        if(!result) return res.status(403).send('Wrong current password')
+      }
+
+      // Hash the provided new password
+      bcrypt.hash(req.body.new_password, 10, (err, hash) => {
+        if(err) return res.status(500).send(`Error hashing password: ${err}`)
+
+        const tx_session = driver.session()
+        tx_session.run(`
+          // Find the user using ID
+          MATCH (employee:Employee)
+          WHERE id(employee) = toInteger($employee_id)
+
+          // Set the new password
+          SET employee.password_hashed = $new_password_hashed
+
+          // Return employee once done
+          RETURN employee
+          `, {
+            employee_id: employee_id,
+            new_password_hashed: hash
+          })
+        .then(result => { res.send(result.records) })
+        .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+        .finally( () => tx_session.close())
       })
-      .then(result => { res.send(result.records) })
-      .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-      .finally( () => session.close())
+
+
+
+    })
+
   })
+  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
+  .finally( () => rx_session.close())
+
+  /*
+
+
+
+  */
 }
 
 
