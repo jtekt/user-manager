@@ -72,7 +72,8 @@ exports.patch_employee = (req, res) => {
 
   if(res.locals.user.properties.isAdmin) {
     customizable_fields= customizable_fields.concat([
-      'isAdmin'
+      'isAdmin',
+      'role',
     ])
   }
 
