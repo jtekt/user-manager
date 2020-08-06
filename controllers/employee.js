@@ -70,6 +70,12 @@ exports.patch_employee = (req, res) => {
     'current_location',
   ]
 
+  if(res.locals.user.properties.isAdmin) {
+    customizable_fields= customizable_fields.concat([
+      'isAdmin'
+    ])
+  }
+
   // prevent user from modifying disallowed properties
   for (let [key, value] of Object.entries(req.body)) {
     if(!customizable_fields.includes(key)) delete req.body[key]
@@ -100,8 +106,8 @@ exports.patch_employee = (req, res) => {
 exports.update_password = (req, res) => {
 
   // Input sanitation
-  if(!('new_password' in req.body)) return res.status(400).send(`New nassword missing`)
-  if(!('new_password_confirm' in req.body)) return res.status(400).send(`New password confirm missing`)
+  if(!req.body.new_password) return res.status(400).send(`New nassword missing`)
+  if(!req.body.new_password_confirm) return res.status(400).send(`New password confirm missing`)
 
 
   // get the ID of the current user
@@ -116,7 +122,10 @@ exports.update_password = (req, res) => {
     return res.status(403).send(`Unauthorized to modify another user's password`)
   }
 
-  if(!res.locals.user.properties.isAdmin && !('current_password' in req.body)) return res.status(400).send(`Current password missing`)
+  // Only allow admins to set password without checking the current password
+  if(!res.locals.user.properties.isAdmin && !req.body.current_password) {
+    return res.status(400).send(`Current password missing`)
+  }
 
 
   const rx_session = driver.session()
