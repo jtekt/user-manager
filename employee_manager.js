@@ -24,7 +24,7 @@ app.use(cors())
 
 app.get('/', (req, res) => {
   res.send({
-    application_name: 'Employee information management API',
+    application_name: 'Employee account management API',
     author: 'Maxime MOREILLON',
     version: pjson.version,
     neo4j_url: process.env.NEO4J_URL,

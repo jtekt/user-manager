@@ -161,6 +161,7 @@ exports.update_password = (req, res) => {
 
           // Set the new password
           SET employee.password_hashed = $new_password_hashed
+          SEt employee.password_changed = true
 
           // Return employee once done
           RETURN employee
