@@ -34,28 +34,35 @@ exports.create_employee = (req, res) => {
   req.body.first_name_kanji = `${first_name}`
   req.body.family_name_kanji = `${family_name}`
 
-  // Todo: hash password
-  var session = driver.session()
-  session
-  .run(`
-    // Merge by employee number since unique
-    MERGE (employee:Employee:User {employee_number:$properties.employee_number})
+  bcrypt.hash(req.body.employee_number, 10, (err, hash) => {
+    if(err) return res.status(500).send(`Error hashing password: ${err}`)
 
-    // Update the employee properties
-    // += implies update of existing properties
-    // DO NOT FORGET the '+'!
-    SET employee += $properties
+    req.body.password_hashed = hash
 
-    RETURN employee
-    `, {
-    properties: req.body,
+    var session = driver.session()
+    session
+    .run(`
+      // Merge by employee number since unique
+      MERGE (employee:Employee:User {employee_number:$properties.employee_number})
+
+      // Update the employee properties
+      // += implies update of existing properties
+      // DO NOT FORGET the '+'!
+      SET employee += $properties
+
+      RETURN employee
+      `, {
+      properties: req.body,
+    })
+    .then(result => {
+      res.send(result.records)
+      console.log(`Employee created`)
+    })
+    .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
+    .finally( () => session.close())
+
   })
-  .then(result => {
-    res.send(result.records)
-    console.log(`Employee created`)
-  })
-  .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
-  .finally( () => session.close())
+
 
 }
 
