@@ -36,6 +36,10 @@ const router = express.Router()
 
 router.use(auth.authenticate)
 
+router.route('/')
+  .get(controller.get_all_employees)
+  .post(controller.create_employee)
+
 router.route('/find')
   .get(controller.find_employee)
 
@@ -48,14 +52,6 @@ router.route('/:employee_id/password')
 
 // use the router
 app.use('/employees', router)
-
-
-/*
-app.route('/employee')
-  .get(auth.authenticate, controller.get_employee)
-*/
-
-
 
 
 // Start the server

@@ -2,6 +2,63 @@ const driver = require('../neo4j_driver.js')
 const bcrypt = require('bcrypt')
 
 
+exports.create_employee = (req, res) => {
+
+  let current_user_id = res.locals.user.identity.low
+
+  // Prevent normal users to create a user
+  if(!res.locals.user.properties.isAdmin){
+    return res.status(403).send(`Unauthorized to create a user`)
+  }
+
+  let mandatory_properties = [
+    'email_address',
+    'employee_number',
+    'first_name',
+    'family_name',
+  ]
+
+
+  let missing_properties = mandatory_properties.filter((key) => {
+    return !(key in req.body)
+  })
+
+  if(missing_properties.length > 0 ) {
+    return res.status(400).send(`Missing properties: ${missing_properties.join(', ')}`)
+  }
+
+  // Adding properties
+  req.body.name = `${family_name} ${first_name}`
+  req.body.display_name = `${family_name} ${first_name}`
+  req.body.name_kanji = `${family_name} ${first_name}`
+  req.body.first_name_kanji = `${first_name}`
+  req.body.family_name_kanji = `${family_name}`
+
+  // Todo: hash password
+  var session = driver.session()
+  session
+  .run(`
+    // Merge by employee number since unique
+    MERGE (employee:Employee:User {employee_number:$properties.employee_number})
+
+    // Update the employee properties
+    // += implies update of existing properties
+    // DO NOT FORGET the '+'!
+    SET employee += $properties
+
+    RETURN employee
+    `, {
+    properties: req.body,
+  })
+  .then(result => {
+    res.send(result.records)
+    console.log(`Employee created`)
+  })
+  .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
+  .finally( () => session.close())
+
+}
+
 exports.get_employee = (req, res) => {
   // Route to retrieve an employee's data
 
@@ -14,7 +71,7 @@ exports.get_employee = (req, res) => {
 
   if(employee_id === 'self') employee_id = res.locals.user.identity.low
 
-  const session = driver.session();
+  const session = driver.session()
   session
   .run(`
     // Find the employee using the ID
@@ -25,6 +82,30 @@ exports.get_employee = (req, res) => {
     `, {
     employee_id: employee_id,
   })
+  .then(result => { res.send(result.records) })
+  .catch(error => {
+    console.error(error)
+    res.status(400).send(`Error accessing DB: ${error}`)
+  })
+  .finally( () => { session.close() })
+}
+
+exports.get_all_employees = (req, res) => {
+  // Route to retrieve all employees
+
+  // TODO: Manage limits better
+
+  const session = driver.session()
+  session
+  .run(`
+    // Find the employee using the ID
+    MATCH (employee:Employee)
+
+    RETURN employee
+
+    LIMIT 100
+
+    `, {})
   .then(result => { res.send(result.records) })
   .catch(error => {
     console.error(error)
@@ -85,7 +166,7 @@ exports.patch_employee = (req, res) => {
   var session = driver.session()
   session
   .run(`
-    // Find the group
+    // Find the user
     MATCH (employee:Employee)
     WHERE id(employee)=toInteger($employee_id)
 
@@ -99,7 +180,7 @@ exports.patch_employee = (req, res) => {
     properties: req.body,
   })
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error updating group: ${error}`) })
+  .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
   .finally( () => session.close())
 
 }
