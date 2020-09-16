@@ -63,7 +63,6 @@ exports.create_employee = (req, res) => {
 
   })
 
-
 }
 
 exports.get_employee = (req, res) => {
@@ -156,6 +155,7 @@ exports.patch_employee = (req, res) => {
     // for 行先掲示板
     'presence',
     'current_location',
+    'whereabouts_last_update'
   ]
 
   if(res.locals.user.properties.isAdmin) {
