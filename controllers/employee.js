@@ -187,7 +187,10 @@ exports.patch_employee = (req, res) => {
     employee_id: user_id,
     properties: req.body,
   })
-  .then(result => { res.send(result.records) })
+  .then(result => {
+    res.send(result.records)
+    console.log(`User ${user_id} patched`)
+  })
   .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
   .finally( () => session.close())
 
