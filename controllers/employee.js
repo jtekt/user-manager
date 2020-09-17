@@ -162,6 +162,7 @@ exports.patch_employee = (req, res) => {
     customizable_fields= customizable_fields.concat([
       'isAdmin',
       'role',
+      'locked'
     ])
   }
 
