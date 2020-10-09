@@ -331,6 +331,10 @@ exports.create_admin_if_not_exists = () => {
     const session = driver.session();
     session
     .run(`
+
+      // Create a dummy node so that the administrator account does not get ID 0
+      MERGE (dummy:DummyNode)
+
       // Find the administrator account or create it if it does not exist
       MERGE (administrator:User:Employee {username:"administrator"})
 
