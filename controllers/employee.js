@@ -21,7 +21,7 @@ exports.create_employee = (req, res) => {
 
   // compute a list of properties missing from the body
   let missing_properties = mandatory_properties.filter((key) => {
-    return !(key in req.body)
+    return !req.body[key]
   })
 
   if(missing_properties.length > 0 ) {
