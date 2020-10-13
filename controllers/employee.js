@@ -8,6 +8,7 @@ exports.create_employee = (req, res) => {
 
   // Prevent normal users to create a user
   if(!res.locals.user.properties.isAdmin){
+    console.log(`Unauthorized to create a user`)
     return res.status(403).send(`Unauthorized to create a user`)
   }
 
@@ -18,32 +19,41 @@ exports.create_employee = (req, res) => {
     'family_name',
   ]
 
-
+  // compute a list of properties missing from the body
   let missing_properties = mandatory_properties.filter((key) => {
     return !(key in req.body)
   })
 
   if(missing_properties.length > 0 ) {
+    console.log(`Missing properties: ${missing_properties.join(', ')}`)
     return res.status(400).send(`Missing properties: ${missing_properties.join(', ')}`)
   }
 
   // Adding properties
-  req.body.name = `${family_name} ${first_name}`
-  req.body.display_name = `${family_name} ${first_name}`
-  req.body.name_kanji = `${family_name} ${first_name}`
-  req.body.first_name_kanji = `${first_name}`
-  req.body.family_name_kanji = `${family_name}`
+  req.body.name = `${req.body.family_name} ${req.body.first_name}`
+  req.body.display_name = `${req.body.family_name} ${req.body.first_name}`
 
-  bcrypt.hash(req.body.employee_number, 10, (err, hash) => {
-    if(err) return res.status(500).send(`Error hashing password: ${err}`)
+  let passsword_plain = req.body.password || req.body.employee_number
 
+  bcrypt.hash(req.body.employee_number, 10, (error, hash) => {
+
+    // Handle hashing errors
+    if(error) {
+      console.log(error)
+      return res.status(500).send(`Error hashing password: ${error}`)
+    }
+
+    // save the hashed password as an employee property
     req.body.password_hashed = hash
+
+    // Delete password if it was sent in the body
+    delete req.body.password
 
     var session = driver.session()
     session
     .run(`
-      // Merge by employee number since unique
-      MERGE (employee:Employee:User {employee_number:$properties.employee_number})
+      // Merge by email_address since unique
+      MERGE (employee:Employee:User {email_address:$properties.email_address})
 
       // Update the employee properties
       // += implies update of existing properties
@@ -55,10 +65,13 @@ exports.create_employee = (req, res) => {
       properties: req.body,
     })
     .then(result => {
-      res.send(result.records)
-      console.log(`Employee created`)
+      res.send(result.records[0].get('employee'))
+      console.log(`Employee ${req.body.display_name} created`)
     })
-    .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
+    .catch(error => {
+      console.log(error)
+      res.status(500).send(`Error updating user: ${error}`)
+    })
     .finally( () => session.close())
 
   })
@@ -162,7 +175,8 @@ exports.patch_employee = (req, res) => {
     customizable_fields= customizable_fields.concat([
       'isAdmin',
       'role',
-      'locked'
+      'locked',
+      'employee_number',
     ])
   }
 
@@ -357,10 +371,10 @@ exports.create_admin_if_not_exists = () => {
       })
       .then(result => {
         if(result.records.length > 0) {
-          console.log(`Administrator account created`)
+          console.log(`Admin creation: admin account created`)
         }
         else {
-          console.log(`Administrator already existed`)
+          console.log(`Admin creation: admin already existed`)
         }
 
       })

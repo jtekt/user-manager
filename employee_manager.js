@@ -34,6 +34,9 @@ app.get('/', (req, res) => {
 
 const router = express.Router()
 
+// use the router
+app.use('/employees', router)
+
 router.use(auth.authenticate)
 
 router.route('/')
@@ -50,8 +53,7 @@ router.route('/:employee_id')
 router.route('/:employee_id/password')
   .put(controller.update_password)
 
-// use the router
-app.use('/employees', router)
+
 
 
 // Start the server
