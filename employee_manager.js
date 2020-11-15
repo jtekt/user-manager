@@ -49,6 +49,7 @@ router.route('/find')
 router.route('/:employee_id')
   .get(controller.get_employee)
   .patch(controller.patch_employee)
+  .delete(controller.delete_employee)
 
 router.route('/:employee_id/password')
   .put(controller.update_password)
