@@ -14,7 +14,7 @@ exports.create_employee = (req, res) => {
 
   let mandatory_properties = [
     'email_address',
-    'employee_number',
+    'employee_number', // not actually super useful but can't be changed afterwards
     'first_name',
     'family_name',
   ]
@@ -288,11 +288,6 @@ exports.update_password = (req, res) => {
   .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
   .finally( () => rx_session.close())
 
-  /*
-
-
-
-  */
 }
 
 
@@ -333,6 +328,46 @@ exports.find_employee = (req, res) => {
   .finally( () => { session.close() })
 }
 
+exports.delete_employee = (req, res) => {
+
+  // Prevent normal users to create a user
+  if(!res.locals.user.properties.isAdmin){
+    console.log(`Unauthorized to create a user`)
+    return res.status(403).send(`Unauthorized to create a user`)
+  }
+
+  const employee_id = req.params.employee_id
+
+  if(!employee_id) {
+    console.log(`Employee ID not defined`)
+    return res.status(403).send(`Employee ID not defined`)
+  }
+
+
+
+  var session = driver.session()
+  session
+  .run(`
+    // Merge by email_address since unique
+    MERGE (employee:Employee:User)
+    WHERE id(employee) = toInteger($employee_id)
+
+    DETACH DELETE (employee)
+    `, {
+    $employee_id: employee_id,
+  })
+  .then(result => {
+    res.send('OK')
+    console.log(`Employee ${employee_id} deleted`)
+  })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error updating user: ${error}`)
+  })
+  .finally( () => session.close())
+
+
+}
 
 exports.create_admin_if_not_exists = () => {
 
