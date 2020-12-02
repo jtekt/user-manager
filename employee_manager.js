@@ -5,6 +5,7 @@ const auth = require('@moreillon/authentication_middleware')
 const pjson = require('./package.json')
 const dotenv = require('dotenv')
 const controller = require('./controllers/employee.js')
+const apiMetrics = require('prometheus-api-metrics')
 
 dotenv.config()
 
@@ -21,6 +22,7 @@ controller.create_admin_if_not_exists()
 var app = express()
 app.use(bodyParser.json())
 app.use(cors())
+app.use(apiMetrics())
 
 app.get('/', (req, res) => {
   res.send({
