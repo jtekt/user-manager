@@ -1,10 +1,16 @@
 const driver = require('../neo4j_driver.js')
 const bcrypt = require('bcrypt')
 
+function get_current_user_id(res){
+  return res.locals.user.identity.low
+    ?? res.locals.user.identity
+}
 
 exports.create_employee = (req, res) => {
 
-  let current_user_id = res.locals.user.identity.low
+  // WARNING: USER COULD BE CREATED WITH MORE PROPERTIES THAN ANTICIPATED
+
+  const current_user_id =  get_current_user_id(res)
 
   // Prevent normal users to create a user
   if(!res.locals.user.properties.isAdmin){
@@ -12,7 +18,7 @@ exports.create_employee = (req, res) => {
     return res.status(403).send(`Unauthorized to create a user`)
   }
 
-  let mandatory_properties = [
+  const mandatory_properties = [
     'email_address',
     'employee_number', // not actually super useful but can't be changed afterwards
     'first_name',
@@ -86,9 +92,9 @@ exports.get_employee = (req, res) => {
     || req.query.id
     || req.query.user_id
     || req.query.employee_id
-    || res.locals.user.identity.low
+    || get_current_user_id(res)
 
-  if(employee_id === 'self') employee_id = res.locals.user.identity.low
+  if(employee_id === 'self') employee_id =  get_current_user_id(res)
 
   const session = driver.session()
   session
@@ -99,9 +105,13 @@ exports.get_employee = (req, res) => {
 
     RETURN employee
     `, {
-    employee_id: employee_id,
+    employee_id,
   })
-  .then(result => { res.send(result.records) })
+  .then(result => {
+    const user_id = JSON.stringify(result.records[0]._fields[result.records[0]._fieldLookup.employee].identity)
+    console.log(`Profile of user ${user_id} queried`)
+    res.send(result.records)
+  })
   .catch(error => {
     console.error(error)
     res.status(400).send(`Error accessing DB: ${error}`)
@@ -135,18 +145,25 @@ exports.get_all_employees = (req, res) => {
 
 exports.patch_employee = (req, res) => {
 
-  let current_user_id = res.locals.user.identity.low
+  const current_user_id = get_current_user_id(res)
 
-  let user_id = req.params.employee_id
+  let employee_id = req.params.employee_id
     || req.params.user_id
     || req.params.id
 
-  // Prevent normal users to modify another user
-  if(!res.locals.user.properties.isAdmin){
-    if(user_id != current_user_id) {
-      return res.status(403).send(`Unauthorized to modify another user's data`)
-    }
+  if(employee_id === 'self') employee_id = current_user_id
+
+  if(!employee_id) {
+    console.log(`Missing employee ID`)
+    res.status(400).send(`Missing employee ID`)
   }
+
+  // Prevent normal users to modify another user
+  if(!res.locals.user.properties.isAdmin && user_id != current_user_id){
+    return res.status(403).send(`Unauthorized to modify another user's data`)
+  }
+
+  console.log(req.body)
 
   let customizable_fields = [
     // Name related
@@ -163,12 +180,7 @@ exports.patch_employee = (req, res) => {
     'name_katakana',
     'first_name_katakana',
     'family_name_katakana',
-    // Misc
     'avatar_src',
-    // for 行先掲示板
-    'presence',
-    'current_location',
-    'whereabouts_last_update'
   ]
 
   if(res.locals.user.properties.isAdmin) {
@@ -180,9 +192,13 @@ exports.patch_employee = (req, res) => {
     ])
   }
 
+
   // prevent user from modifying disallowed properties
   for (let [key, value] of Object.entries(req.body)) {
-    if(!customizable_fields.includes(key)) delete req.body[key]
+    if(!customizable_fields.includes(key)){
+      console.log(`Attempt to modify forbidden key: ${key}`)
+      return res.status(403).send(`Not allowed to modify property ${key}`)
+    }
   }
 
   var session = driver.session()
@@ -198,12 +214,12 @@ exports.patch_employee = (req, res) => {
 
     RETURN employee
     `, {
-    employee_id: user_id,
+    employee_id,
     properties: req.body,
   })
   .then(result => {
     res.send(result.records)
-    console.log(`User ${user_id} patched`)
+    console.log(`User ${employee_id} patched`)
   })
   .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
   .finally( () => session.close())
@@ -216,9 +232,8 @@ exports.update_password = (req, res) => {
   if(!req.body.new_password) return res.status(400).send(`New nassword missing`)
   if(!req.body.new_password_confirm) return res.status(400).send(`New password confirm missing`)
 
-
-  // get the ID of the current user
-  let current_user_id = res.locals.user.identity.low
+  // Get current user ID
+  const current_user_id = get_current_user_id(res)
 
   // Retrieve user ID
   let employee_id = req.params.employee_id
