@@ -20,26 +20,25 @@ exports.create_employee = (req, res) => {
 
   const mandatory_properties = [
     'email_address',
-    'employee_number', // not actually super useful but can't be changed afterwards
+    'employee_number',
     'first_name',
     'family_name',
   ]
 
   // compute a list of properties missing from the body
-  let missing_properties = mandatory_properties.filter((key) => {
-    return !req.body[key]
-  })
+  const missing_properties = mandatory_properties.filter( key => !req.body[key] )
 
   if(missing_properties.length > 0 ) {
-    console.log(`Missing properties: ${missing_properties.join(', ')}`)
-    return res.status(400).send(`Missing properties: ${missing_properties.join(', ')}`)
+    const message = `Missing properties: ${missing_properties.join(', ')}`
+    console.log(message)
+    return res.status(400).send(message)
   }
 
   // Adding properties
   req.body.name = `${req.body.family_name} ${req.body.first_name}`
   req.body.display_name = `${req.body.family_name} ${req.body.first_name}`
 
-  let passsword_plain = req.body.password || req.body.employee_number
+  const passsword_plain = req.body.password || req.body.employee_number
 
   bcrypt.hash(req.body.employee_number, 10, (error, hash) => {
 
