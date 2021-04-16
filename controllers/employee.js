@@ -156,11 +156,7 @@ exports.get_employees = (req, res) => {
   let ids_query = ''
   if(req.query.ids) {
     search_query = `
-    // Make a list of the keys of each node
-    // Additionally, filter out fields that should not be searched
     WITH employee
-
-    // Unwinding
     UNWIND $ids as id
     WITH id, employee
     WHERE id(employee)=toInteger(id)
@@ -291,7 +287,7 @@ exports.update_password = (req, res) => {
   const user_is_admin = res.locals.user.properties.isAdmin
 
   // Prevent an user from modifying another's password
-  if(employee_id !== current_user_id && !user_is_admin) {
+  if(String(employee_id) !== String(current_user_id) && !user_is_admin) {
     return res.status(403).send(`Unauthorized to modify another user's password`)
   }
 
@@ -311,7 +307,10 @@ exports.update_password = (req, res) => {
     `, { employee_id })
   .then(result => {
     const current_password_hashed = result.records[0].get('password')
-    if(user_is_admin) return
+    if(user_is_admin) {
+      console.log(`[Password update] User is admin, skipping current password verification`)
+      return
+    }
     return compare_password(current_password, current_password_hashed)
   })
   .then(() => hash_password(new_password))
