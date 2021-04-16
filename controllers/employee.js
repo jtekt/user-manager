@@ -6,6 +6,25 @@ function get_current_user_id(res){
     ?? res.locals.user.identity
 }
 
+function hash_password(password_plain) {
+  return new Promise ( (resolve, reject) => {
+    bcrypt.hash(password_plain, 10, (error, password_hashed) => {
+      if(error) return reject(error)
+      resolve(password_hashed)
+      console.log(`[Bcrypt] Password hashed`)
+    })
+  })
+}
+
+function compare_password(password_plain, password_hashed){
+  return new Promise( (resolve, reject) => {
+    bcrypt.compare(password_plain, password_hashed, (error, result) => {
+      if(error) return reject(error)
+      resolve(result)
+    })
+  })
+}
+
 exports.create_employee = (req, res) => {
 
   // WARNING: USER COULD BE CREATED WITH MORE PROPERTIES THAN ANTICIPATED
@@ -34,15 +53,12 @@ exports.create_employee = (req, res) => {
     return res.status(400).send(message)
   }
 
-  const passsword_plain = req.body.password || req.body.employee_number
+  const password_plain = req.body.password || req.body.employee_number
 
-  bcrypt.hash(req.body.employee_number, 10, (error, password_hashed) => {
+  const session = driver.session()
 
-    // Handle hashing errors
-    if(error) {
-      console.log(error)
-      return res.status(500).send(`Error hashing password: ${error}`)
-    }
+  hash_password(password_plain)
+  .then(password_hashed => {
 
     const new_employee_properties = {
       password_hashed,
@@ -54,9 +70,7 @@ exports.create_employee = (req, res) => {
       display_name: `${req.body.family_name} ${req.body.first_name}`,
     }
 
-    var session = driver.session()
-    session
-    .run(`
+    const query = `
       // Merge by email_address since unique
       MERGE (employee:Employee:User {email_address:$properties.email_address})
 
@@ -66,20 +80,22 @@ exports.create_employee = (req, res) => {
       SET employee += $properties
 
       RETURN employee
-      `, {
-      properties: new_employee_properties,
-    })
-    .then(result => {
-      res.send(result.records[0].get('employee'))
-      console.log(`Employee ${new_employee_properties.display_name} created`)
-    })
-    .catch(error => {
-      console.log(error)
-      res.status(500).send(`Error updating user: ${error}`)
-    })
-    .finally( () => session.close())
+      `
 
+    const parameters = {properties: new_employee_properties}
+
+    return session.run(query, parameters)
   })
+  .then(result => {
+    res.send(result.records[0].get('employee'))
+    console.log(`[Neo4J] New employee created`)
+  })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error updating user: ${error}`)
+  })
+  .finally( () => session.close())
+
 
 }
 
@@ -260,8 +276,10 @@ exports.patch_employee = (req, res) => {
 exports.update_password = (req, res) => {
 
   // Input sanitation
-  if(!req.body.new_password) return res.status(400).send(`New nassword missing`)
-  if(!req.body.new_password_confirm) return res.status(400).send(`New password confirm missing`)
+  const {new_password, new_password_confirm, current_password} = req.body
+
+  if(!new_password) return res.status(400).send(`New nassword missing`)
+  if(!new_password_confirm) return res.status(400).send(`New password confirm missing`)
 
   // Get current user ID
   const current_user_id = get_current_user_id(res)
@@ -270,67 +288,58 @@ exports.update_password = (req, res) => {
   let employee_id = req.params.employee_id
   if(employee_id === 'self') employee_id = current_user_id
 
+  const user_is_admin = res.locals.user.properties.isAdmin
+
   // Prevent an user from modifying another's password
-  if(employee_id !== current_user_id && !res.locals.user.properties.isAdmin) {
+  if(employee_id !== current_user_id && !user_is_admin) {
     return res.status(403).send(`Unauthorized to modify another user's password`)
   }
 
   // Only allow admins to set password without checking the current password
-  if(!res.locals.user.properties.isAdmin && !req.body.current_password) {
+  if(!user_is_admin && !current_password) {
     return res.status(400).send(`Current password missing`)
   }
 
-
-  const rx_session = driver.session()
-  rx_session.run(`
+  const session = driver.session()
+  session.run(`
     // Find the user using ID
     MATCH (employee:Employee)
     WHERE id(employee) = toInteger($employee_id)
 
     // Return employee once done
     RETURN employee.password_hashed as password
-    `, {
-      employee_id: employee_id,
-    })
+    `, { employee_id })
   .then(result => {
-    let current_password_hashed = result.records[0].get('password')
-    bcrypt.compare(req.body.current_password, current_password_hashed, (err, result) => {
-      // Current password must be correct for non-admins
-      if(!res.locals.user.properties.isAdmin){
-        if(err) return res.status(500).send('Error verifying current password')
-        if(!result) return res.status(403).send('Wrong current password')
-      }
-
-      // Hash the provided new password
-      bcrypt.hash(req.body.new_password, 10, (err, hash) => {
-        if(err) return res.status(500).send(`Error hashing password: ${err}`)
-
-        const tx_session = driver.session()
-        tx_session.run(`
-          // Find the user using ID
-          MATCH (employee:Employee)
-          WHERE id(employee) = toInteger($employee_id)
-
-          // Set the new password
-          SET employee.password_hashed = $new_password_hashed
-          SEt employee.password_changed = true
-
-          // Return employee once done
-          RETURN employee
-          `, {
-            employee_id: employee_id,
-            new_password_hashed: hash
-          })
-        .then(result => { res.send(result.records) })
-        .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-        .finally( () => tx_session.close())
-      })
-
-    })
-
+    const current_password_hashed = result.records[0].get('password')
+    //if(user_is_admin) return
+    return compare_password(current_password, current_password_hashed)
   })
-  .catch(error => res.status(400).send(`Error accessing DB: ${error}`))
-  .finally( () => rx_session.close())
+  .then(() => hash_password(new_password))
+  .then(password_hashed => {
+    return session.run(`
+    // Find the user using ID
+    MATCH (employee:Employee)
+    WHERE id(employee) = toInteger($employee_id)
+
+    // Set the new password
+    SET employee.password_hashed = $password_hashed
+    SEt employee.password_changed = true
+
+    // Return employee once done
+    RETURN employee
+    `, { employee_id, password_hashed }
+    )
+  })
+  .then(result => {
+    console.log(`[Neo4J] Password of user ${employee_id} updated`)
+    res.send(result.records)
+   })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(error)
+  })
+  .finally( () => session.close() )
+
 
 }
 
@@ -378,16 +387,14 @@ exports.delete_employee = (req, res) => {
 
 exports.create_admin_if_not_exists = () => {
 
-  let default_admin_password = process.env.DEFAULT_ADMIN_PASSWORD
+  const default_admin_password = process.env.DEFAULT_ADMIN_PASSWORD
     || 'administrator'
 
-  bcrypt.hash(default_admin_password, 10, (err, hash) => {
-    if(err) return res.status(500).send(`Error hashing password: ${err}`)
+  const session = driver.session()
 
-    const session = driver.session();
-    session
-    .run(`
-
+  hash_password(default_admin_password)
+  .then(default_admin_password_hashed => {
+    return session.run(`
       // Create a dummy node so that the administrator account does not get ID 0
       MERGE (dummy:DummyNode)
 
@@ -408,21 +415,12 @@ exports.create_admin_if_not_exists = () => {
 
       // Return the account
       RETURN 'OK'
-      `, {
-        default_admin_password_hashed: hash
-      })
-      .then(result => {
-        if(result.records.length > 0) {
-          console.log(`Admin creation: admin account created`)
-        }
-        else {
-          console.log(`Admin creation: admin already existed`)
-        }
-
-      })
-      .catch(error => {
-        console.log(error)
-      })
-      .finally( () => session.close())
+      `, { default_admin_password_hashed })
   })
+  .then(result => {
+    if(result.records.length > 0) console.log(`[Neo4J] Admin creation: admin account created`)
+    else console.log(`[Neo4J] Admin creation: admin already existed`)
+  })
+  .catch(error => { console.log(error) })
+  .finally( () => session.close())
 }
