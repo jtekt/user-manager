@@ -311,7 +311,7 @@ exports.update_password = (req, res) => {
     `, { employee_id })
   .then(result => {
     const current_password_hashed = result.records[0].get('password')
-    //if(user_is_admin) return
+    if(user_is_admin) return
     return compare_password(current_password, current_password_hashed)
   })
   .then(() => hash_password(new_password))
