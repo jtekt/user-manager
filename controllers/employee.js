@@ -119,9 +119,8 @@ exports.get_employee = (req, res) => {
 }
 
 exports.get_employees = (req, res) => {
-  // Route to retrieve all employees
+  // Route to retrieve employees
 
-  // TODO: Manage limits better
   let search_query = ''
   if(req.query.search) {
     search_query = `
@@ -138,6 +137,20 @@ exports.get_employees = (req, res) => {
     `
   }
 
+  let ids_query = ''
+  if(req.query.ids) {
+    search_query = `
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH employee
+
+    // Unwinding
+    UNWIND $ids as id
+    WITH id, employee
+    WHERE id(employee)=toInteger(id)
+    `
+  }
+
   const session = driver.session()
   session
   .run(`
@@ -145,14 +158,15 @@ exports.get_employees = (req, res) => {
     MATCH (employee:Employee)
 
     ${search_query}
+    ${ids_query}
 
     RETURN DISTINCT employee
 
     LIMIT 100
-
     `, {
       search: req.query.search,
-      exceptions: [ 'password_hashed' ]
+      exceptions: [ 'password_hashed' ],
+      ids: req.query.ids,
     })
   .then(result => { res.send(result.records) })
   .catch(error => {
