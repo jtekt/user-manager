@@ -1,11 +1,11 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const auth = require('@moreillon/authentication_middleware')
 const pjson = require('./package.json')
 const dotenv = require('dotenv')
-const controller = require('./controllers/employee.js')
+const router = require('./routes/employees.js')
 const apiMetrics = require('prometheus-api-metrics')
+const controller = require('./controllers/employee.js')
 
 dotenv.config()
 
@@ -14,10 +14,6 @@ const APP_PORT = process.env.APP_PORT || 80
 
 // Time zone
 process.env.TZ = 'Asia/Tokyo'
-
-
-// Create the administrator account if it does not exist
-controller.create_admin_if_not_exists()
 
 var app = express()
 app.use(bodyParser.json())
@@ -34,30 +30,12 @@ app.get('/', (req, res) => {
   })
 })
 
-const router = express.Router()
-
-// use the router
 app.use('/employees', router)
-
-router.use(auth.authenticate)
-
-router.route('/')
-  .get(controller.get_all_employees)
-  .post(controller.create_employee)
-
-router.route('/find')
-  .get(controller.find_employee)
-
-router.route('/:employee_id')
-  .get(controller.get_employee)
-  .patch(controller.patch_employee)
-  .delete(controller.delete_employee)
-
-router.route('/:employee_id/password')
-  .put(controller.update_password)
-
-
+app.use('/users', router) // alias
 
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`Employee manager listening on port ${APP_PORT}`))
+
+// Create the administrator account if it does not exist
+controller.create_admin_if_not_exists()

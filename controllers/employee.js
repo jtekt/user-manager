@@ -34,13 +34,9 @@ exports.create_employee = (req, res) => {
     return res.status(400).send(message)
   }
 
-  // Adding properties
-  req.body.name = `${req.body.family_name} ${req.body.first_name}`
-  req.body.display_name = `${req.body.family_name} ${req.body.first_name}`
-
   const passsword_plain = req.body.password || req.body.employee_number
 
-  bcrypt.hash(req.body.employee_number, 10, (error, hash) => {
+  bcrypt.hash(req.body.employee_number, 10, (error, password_hashed) => {
 
     // Handle hashing errors
     if(error) {
@@ -48,11 +44,15 @@ exports.create_employee = (req, res) => {
       return res.status(500).send(`Error hashing password: ${error}`)
     }
 
-    // save the hashed password as an employee property
-    req.body.password_hashed = hash
-
-    // Delete password if it was sent in the body
-    delete req.body.password
+    const new_employee_properties = {
+      password_hashed,
+      email_address: req.body.email_address,
+      employee_number: req.body.employee_number,
+      first_name: req.body.first_name,
+      family_name: req.body.family_name,
+      name: `${req.body.family_name} ${req.body.first_name}`,
+      display_name: `${req.body.family_name} ${req.body.first_name}`,
+    }
 
     var session = driver.session()
     session
@@ -67,11 +67,11 @@ exports.create_employee = (req, res) => {
 
       RETURN employee
       `, {
-      properties: req.body,
+      properties: new_employee_properties,
     })
     .then(result => {
       res.send(result.records[0].get('employee'))
-      console.log(`Employee ${req.body.display_name} created`)
+      console.log(`Employee ${new_employee_properties.display_name} created`)
     })
     .catch(error => {
       console.log(error)
@@ -118,10 +118,25 @@ exports.get_employee = (req, res) => {
   .finally( () => { session.close() })
 }
 
-exports.get_all_employees = (req, res) => {
+exports.get_employees = (req, res) => {
   // Route to retrieve all employees
 
   // TODO: Manage limits better
+  let search_query = ''
+  if(req.query.search) {
+    search_query = `
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
+
+    // Unwinding
+    UNWIND keys as key
+
+    // Filter nodes by looking for properties
+    WITH key, employee
+    WHERE toLower(toString(employee[key])) CONTAINS toLower($search)
+    `
+  }
 
   const session = driver.session()
   session
@@ -129,11 +144,16 @@ exports.get_all_employees = (req, res) => {
     // Find the employee using the ID
     MATCH (employee:Employee)
 
-    RETURN employee
+    ${search_query}
+
+    RETURN DISTINCT employee
 
     LIMIT 100
 
-    `, {})
+    `, {
+      search: req.query.search,
+      exceptions: [ 'password_hashed' ]
+    })
   .then(result => { res.send(result.records) })
   .catch(error => {
     console.error(error)
@@ -161,8 +181,6 @@ exports.patch_employee = (req, res) => {
   if(!res.locals.user.properties.isAdmin && user_id != current_user_id){
     return res.status(403).send(`Unauthorized to modify another user's data`)
   }
-
-  console.log(req.body)
 
   let customizable_fields = [
     // Name related
@@ -294,8 +312,6 @@ exports.update_password = (req, res) => {
         .finally( () => tx_session.close())
       })
 
-
-
     })
 
   })
@@ -304,43 +320,6 @@ exports.update_password = (req, res) => {
 
 }
 
-
-exports.find_employee = (req, res) => {
-  // Finding an employee using whichever of his properties
-
-  const session = driver.session();
-  session
-  .run(`
-    // Match all employees
-    MATCH (employee:Employee)
-
-    // Make a list of the keys of each node
-    // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
-
-    // Unwinding
-    UNWIND keys as key
-
-    // Filter nodes by looking for properties
-    WITH key, employee
-    WHERE toLower(toString(employee[key])) CONTAINS toLower($query)
-
-    RETURN DISTINCT employee
-    LIMIT 100
-    `,
-    {
-      query: req.query.query,
-      exceptions: [
-        'password_hashed'
-      ]
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => {
-    console.log(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
-  .finally( () => { session.close() })
-}
 
 exports.delete_employee = (req, res) => {
 
@@ -357,18 +336,18 @@ exports.delete_employee = (req, res) => {
     return res.status(403).send(`Employee ID not defined`)
   }
 
-
+  console.log(employee_id)
 
   var session = driver.session()
   session
   .run(`
     // Merge by email_address since unique
-    MERGE (employee:Employee:User)
+    MATCH (employee:Employee:User)
     WHERE id(employee) = toInteger($employee_id)
 
     DETACH DELETE (employee)
     `, {
-    $employee_id: employee_id,
+    employee_id,
   })
   .then(result => {
     res.send('OK')
