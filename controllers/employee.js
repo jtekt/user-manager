@@ -180,7 +180,10 @@ exports.get_employees = (req, res) => {
       exceptions: [ 'password_hashed' ],
       ids: req.query.ids,
     })
-  .then(result => { res.send(result.records) })
+  .then(({records}) => {
+    const employees = records.map(record => record.get('employee'))
+    res.send( employees )
+   })
   .catch(error => {
     console.error(error)
     res.status(400).send(`Error accessing DB: ${error}`)
