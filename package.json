@@ -1,6 +1,6 @@
 {
   "name": "employee_manager",
-  "version": "2.2.2",
+  "version": "3.0.0",
   "description": "",
   "main": "employee_manager.js",
   "scripts": {

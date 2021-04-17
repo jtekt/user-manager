@@ -1,11 +1,13 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
+const apiMetrics = require('prometheus-api-metrics')
 const pjson = require('./package.json')
 const dotenv = require('dotenv')
-const router = require('./routes/employees.js')
-const apiMetrics = require('prometheus-api-metrics')
-const controller = require('./controllers/employee.js')
+const router_v1 = require('./routes/v1/employees.js')
+const router_v2 = require('./routes/v2/employees.js')
+
+const controller = require('./controllers/v2/employee.js')
 
 dotenv.config()
 
@@ -30,8 +32,11 @@ app.get('/', (req, res) => {
   })
 })
 
-app.use('/employees', router)
-app.use('/users', router) // alias
+app.use('/employees', router_v1)
+app.use('/users', router_v1) // alias
+
+app.use('/v2/employees', router_v2)
+app.use('/v2/users', router_v2) // alias
 
 
 // Start the server

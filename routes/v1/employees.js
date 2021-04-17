@@ -1,5 +1,5 @@
 const express = require('express')
-const controller = require('../controllers/employee.js')
+const controller = require('../../controllers/v1/employee.js')
 
 const auth = require('@moreillon/authentication_middleware')
 
@@ -13,8 +13,6 @@ router.use(auth.authenticate)
 router.route('/')
   .get(controller.get_employees)
   .post(controller.create_employee)
-
-
 
 router.route('/:employee_id')
   .get(controller.get_employee)

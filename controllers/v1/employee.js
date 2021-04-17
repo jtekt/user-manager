@@ -1,4 +1,4 @@
-const driver = require('../neo4j_driver.js')
+const driver = require('../../utils/neo4j_driver_v1.js')
 const bcrypt = require('bcrypt')
 
 function get_current_user_id(res){
@@ -122,10 +122,13 @@ exports.get_employee = (req, res) => {
     `, {
     employee_id,
   })
-  .then(result => {
-    const user_id = JSON.stringify(result.records[0]._fields[result.records[0]._fieldLookup.employee].identity)
-    console.log(`Profile of user ${user_id} queried`)
-    res.send(result.records)
+  .then(({records}) => {
+    if(records.length < 1) {
+      console.log(`[Neo4J] User ${employee_id} not found`)
+      return res.status(400).send(`User ${employee_id} not found`)
+    }
+    console.log(`[Neo4J] Profile of user ${employee_id} queried`)
+    res.send(records)
   })
   .catch(error => {
     console.error(error)
