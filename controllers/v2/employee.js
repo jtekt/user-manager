@@ -74,6 +74,10 @@ exports.create_employee = (req, res) => {
       // Merge by email_address since unique
       MERGE (employee:Employee:User {email_address:$properties.email_address})
 
+      // Prevent duplicates
+      WITH employee
+      WHERE NOT EXISTS(employee.password_hashed)
+
       // Update the employee properties
       // += implies update of existing properties
       // DO NOT FORGET the '+'!
@@ -87,6 +91,12 @@ exports.create_employee = (req, res) => {
     return session.run(query, parameters)
   })
   .then(result => {
+
+    if(records.length < 1) {
+      console.log(`[Neo4J] Failed attempt at creating duplicate user ${req.body.email_address}`)
+      return res.status(400).send(`User ${req.body.email_address} already exists`)
+    }
+
     res.send(result.records[0].get('employee'))
     console.log(`[Neo4J] New employee created`)
   })
@@ -104,12 +114,8 @@ exports.get_employee = (req, res) => {
 
   // Retrieve employee ID
   let employee_id = req.params.employee_id
-    || req.query.id
-    || req.query.user_id
-    || req.query.employee_id
-    || get_current_user_id(res)
-
   if(employee_id === 'self') employee_id =  get_current_user_id(res)
+  if(!employee_id)return res.status(400).send(`employee_id not defined`)
 
   const session = driver.session()
   session
@@ -436,4 +442,38 @@ exports.create_admin_if_not_exists = () => {
   })
   .catch(error => { console.log(error) })
   .finally( () => session.close())
+}
+
+
+exports.get_employees_of_group = (req, res) => {
+  // Route to retrieve an employee's data
+
+  // Retrieve employee ID
+  let {group_id} = req.params
+
+  const session = driver.session()
+  session
+  .run(`
+    // Find the employee using the ID
+    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)
+    WHERE id(group)=toInteger($group_id)
+
+    with employee
+    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)-[:WORKS_IN]->(workplace:Workplace)
+
+    RETURN employee, collect(group) as groups, collect(workplace) as workplaces
+    `, { group_id })
+  .then( ({records}) => {
+    const response = records.map(record => ({
+      ...record.get('employee'),
+      workplaces: record.get('workplaces'),
+      groups: record.get('groups'),
+    }))
+    res.send(response)
+  })
+  .catch(error => {
+    console.error(error)
+    res.status(400).send(`Error accessing DB: ${error}`)
+  })
+  .finally( () => { session.close() })
 }

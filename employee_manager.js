@@ -6,6 +6,7 @@ const pjson = require('./package.json')
 const dotenv = require('dotenv')
 const router_v1 = require('./routes/v1/employees.js')
 const router_v2 = require('./routes/v2/employees.js')
+const group_router_v2 = require('./routes/v2/groups.js')
 
 const controller = require('./controllers/v2/employee.js')
 
@@ -37,6 +38,8 @@ app.use('/users', router_v1) // alias
 
 app.use('/v2/employees', router_v2)
 app.use('/v2/users', router_v2) // alias
+
+app.use('/v2/groups', group_router_v2)
 
 
 // Start the server
