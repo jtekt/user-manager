@@ -146,8 +146,10 @@ exports.get_employee = (req, res) => {
 exports.get_employees = (req, res) => {
   // Route to retrieve employees
 
+  const {search, ids, employee_numbers} = req.query
+
   let search_query = ''
-  if(req.query.search) {
+  if(search) {
     search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
@@ -163,7 +165,7 @@ exports.get_employees = (req, res) => {
   }
 
   let ids_query = ''
-  if(req.query.ids) {
+  if(ids) {
     search_query = `
     WITH employee
     UNWIND $ids as id
@@ -172,9 +174,17 @@ exports.get_employees = (req, res) => {
     `
   }
 
-  const session = driver.session()
-  session
-  .run(`
+  let employee_numbers_query = ''
+  if(employee_numbers) {
+    search_query = `
+    WITH employee
+    UNWIND $employee_numbers as employee_number
+    WITH employee_number, employee
+    WHERE employee.employee_number=employee_number
+    `
+  }
+
+  const query = `
     // Find the employee using the ID
     MATCH (employee:Employee)
 
@@ -184,14 +194,21 @@ exports.get_employees = (req, res) => {
     RETURN DISTINCT employee
 
     LIMIT 100
-    `, {
-      search: req.query.search,
-      exceptions: [ 'password_hashed' ],
-      ids: req.query.ids,
-    })
+    `
+
+  const parameters = {
+    exceptions: [ 'password_hashed' ],
+    search,
+    ids,
+    employee_numbers,
+  }
+
+  const session = driver.session()
+  session.run(query, parameters)
   .then(({records}) => {
     const employees = records.map(record => record.get('employee'))
     res.send( employees )
+    console.log(`[Neo4J] Employees queried`)
    })
   .catch(error => {
     console.error(error)
