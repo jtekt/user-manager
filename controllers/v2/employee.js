@@ -129,12 +129,18 @@ exports.get_employee = (req, res) => {
     employee_id,
   })
   .then( ({records}) => {
-    if(records.length < 1) {
+
+    if(!records.length) {
       console.log(`[Neo4J] User ${employee_id} not found`)
       return res.status(400).send(`User ${employee_id} not found`)
     }
+
+    const employee = records[0].get('employee')
+    delete employee.properties.password_hashed
+
+    res.send(employee)
+
     console.log(`[Neo4J] Profile of user ${employee_id} queried`)
-    res.send(records[0].get('employee'))
   })
   .catch(error => {
     console.error(error)
@@ -206,7 +212,10 @@ exports.get_employees = (req, res) => {
   const session = driver.session()
   session.run(query, parameters)
   .then(({records}) => {
+
     const employees = records.map(record => record.get('employee'))
+    employees.forEach( employee => { delete employee.properties.password_hashed })
+    
     res.send( employees )
     console.log(`[Neo4J] Employees queried`)
    })
