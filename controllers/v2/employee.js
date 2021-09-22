@@ -199,7 +199,7 @@ exports.get_employees = (req, res) => {
 
     RETURN DISTINCT employee
 
-    LIMIT 100
+    LIMIT 200
     `
 
   const parameters = {
@@ -215,7 +215,7 @@ exports.get_employees = (req, res) => {
 
     const employees = records.map(record => record.get('employee'))
     employees.forEach( employee => { delete employee.properties.password_hashed })
-    
+
     res.send( employees )
     console.log(`[Neo4J] Employees queried`)
    })
