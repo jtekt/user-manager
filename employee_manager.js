@@ -2,7 +2,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const apiMetrics = require('prometheus-api-metrics')
-const pjson = require('./package.json')
+const {version, author, name: application_name} = require('./package.json')
 const dotenv = require('dotenv')
 const router_v1 = require('./routes/v1/employees.js')
 const router_v2 = require('./routes/v2/employees.js')
@@ -16,7 +16,7 @@ dotenv.config()
 const APP_PORT = process.env.APP_PORT || 80
 
 // Time zone
-process.env.TZ = 'Asia/Tokyo'
+process.env.TZ = process.env.TZ || 'Asia/Tokyo'
 
 var app = express()
 app.use(bodyParser.json())
@@ -25,9 +25,9 @@ app.use(apiMetrics())
 
 app.get('/', (req, res) => {
   res.send({
-    application_name: 'Employee account management API',
-    author: 'Maxime MOREILLON',
-    version: pjson.version,
+    application_name,
+    author,
+    version,
     neo4j_url: process.env.NEO4J_URL,
     authentication_api_url: process.env.AUTHENTICATION_API_URL,
   })
