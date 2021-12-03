@@ -1,6 +1,5 @@
 const {Router} = require('express')
 const password_router = require('./password')
-const auth = require('@moreillon/express_identification_middleware')
 const {
   get_employees,
   create_employee,
@@ -11,9 +10,6 @@ const {
 
 
 const router = Router({mergeParams: true})
-
-const options = { url: `${process.env.AUTHENTICATION_API_URL}/v2/whoami` }
-router.use(auth(options))
 
 router.route('/')
   .get(get_employees)

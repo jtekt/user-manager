@@ -1,29 +1,12 @@
-const driver = require('../../utils/neo4j_driver_v1.js')
+const {drivers: {v1: driver}} = require('../../db.js')
 const bcrypt = require('bcrypt')
 
-function get_current_user_id(res){
-  return res.locals.user.identity.low
-    ?? res.locals.user.identity
-}
-
-function hash_password(password_plain) {
-  return new Promise ( (resolve, reject) => {
-    bcrypt.hash(password_plain, 10, (error, password_hashed) => {
-      if(error) return reject(error)
-      resolve(password_hashed)
-      console.log(`[Bcrypt] Password hashed`)
-    })
-  })
-}
-
-function compare_password(password_plain, password_hashed){
-  return new Promise( (resolve, reject) => {
-    bcrypt.compare(password_plain, password_hashed, (error, result) => {
-      if(error) return reject(error)
-      resolve(result)
-    })
-  })
-}
+const {
+  get_current_user_id,
+  hash_password,
+  compare_password,
+  generate_token
+} = require('../../utils.js')
 
 exports.create_employee = (req, res) => {
 

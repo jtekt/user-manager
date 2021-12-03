@@ -1,4 +1,4 @@
-const driver = require('../../utils/neo4j_driver_v2.js')
+const {drivers: {v2: driver}} = require('../../db.js')
 const bcrypt = require('bcrypt')
 const {
   get_current_user_id,
@@ -97,10 +97,13 @@ exports.create_employee = (req, res) => {
 exports.get_employee = (req, res) => {
   // Route to retrieve an employee's data
 
+  console.log('here?')
+
   // Retrieve employee ID
+  // NOTE: Employee ID is NOT Employee number
   let employee_id = req.params.employee_id
-  if(employee_id === 'self') employee_id =  get_current_user_id(res)
-  if(!employee_id)return res.status(400).send(`employee_id not defined`)
+  if(employee_id === 'self') employee_id = get_current_user_id(res)
+  if(!employee_id) return res.status(400).send(`employee_id not defined`)
 
   const session = driver.session()
   session

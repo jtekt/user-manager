@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt')
-const driver = require('../../utils/neo4j_driver_v2.js')
+const {drivers: {v2: driver}} = require('../../db.js')
 const {
   get_current_user_id,
   hash_password,

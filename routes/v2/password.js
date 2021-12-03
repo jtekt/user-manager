@@ -1,4 +1,3 @@
-//
 const {Router} = require('express')
 const password_router = require('./password')
 const {

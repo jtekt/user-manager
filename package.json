@@ -2,7 +2,7 @@
   "name": "employee_info_manager",
   "version": "3.0.3",
   "description": "",
-  "main": "employee_manager.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
