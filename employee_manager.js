@@ -8,8 +8,8 @@ const router_v1 = require('./routes/v1/employees.js')
 const router_v2 = require('./routes/v2/employees.js')
 const group_router_v2 = require('./routes/v2/groups.js')
 
-const controller = require('./controllers/v2/employee.js')
-
+const {create_admin_if_not_exists} = require('./controllers/v2/employee.js')
+const { request_password_reset } = require('./controllers/v2/password.js')
 dotenv.config()
 
 // Express port
@@ -41,9 +41,12 @@ app.use('/v2/users', router_v2) // alias
 
 app.use('/v2/groups', group_router_v2)
 
+app.post('/v2/password/reset', request_password_reset)
+// route for password reset here
+
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`Employee manager listening on port ${APP_PORT}`))
 
 // Create the administrator account if it does not exist
-controller.create_admin_if_not_exists()
+create_admin_if_not_exists()

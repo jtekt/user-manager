@@ -1,29 +1,14 @@
 const driver = require('../../utils/neo4j_driver_v2.js')
 const bcrypt = require('bcrypt')
+const {
+  get_current_user_id,
+  hash_password,
+  compare_password,
+} = require('../../utils.js')
 
-function get_current_user_id(res){
-  return res.locals.user.identity.low
-    ?? res.locals.user.identity
-}
 
-function hash_password(password_plain) {
-  return new Promise ( (resolve, reject) => {
-    bcrypt.hash(password_plain, 10, (error, password_hashed) => {
-      if(error) return reject(error)
-      resolve(password_hashed)
-      console.log(`[Bcrypt] Password hashed`)
-    })
-  })
-}
 
-function compare_password(password_plain, password_hashed){
-  return new Promise( (resolve, reject) => {
-    bcrypt.compare(password_plain, password_hashed, (error, result) => {
-      if(error) return reject(error)
-      resolve(result)
-    })
-  })
-}
+
 
 exports.create_employee = (req, res) => {
 
@@ -313,82 +298,7 @@ exports.patch_employee = (req, res) => {
 
 }
 
-exports.update_password = (req, res) => {
 
-  // Input sanitation
-  const {new_password, new_password_confirm, current_password} = req.body
-
-  if(!new_password) return res.status(400).send(`New nassword missing`)
-  if(!new_password_confirm) return res.status(400).send(`New password confirm missing`)
-
-  // Get current user ID
-  const current_user_id = get_current_user_id(res)
-
-  // Retrieve user ID
-  let employee_id = req.params.employee_id
-  if(employee_id === 'self') employee_id = current_user_id
-
-  const user_is_admin = res.locals.user.properties.isAdmin
-
-  // Prevent an user from modifying another's password
-  if(String(employee_id) !== String(current_user_id) && !user_is_admin) {
-    return res.status(403).send(`Unauthorized to modify another user's password`)
-  }
-
-  // Only allow admins to set password without checking the current password
-  if(!user_is_admin && !current_password) {
-    return res.status(400).send(`Current password missing`)
-  }
-
-  const session = driver.session()
-  session.run(`
-    // Find the user using ID
-    MATCH (employee:Employee)
-    WHERE id(employee) = toInteger($employee_id)
-
-    // Return employee once done
-    RETURN employee.password_hashed as password
-    `, { employee_id })
-  .then( ({records}) => {
-    if(records.length < 1) throw 'Employee not found'
-    const current_password_hashed = records[0].get('password')
-    if(user_is_admin) {
-      console.log(`[Password update] User is admin, skipping current password verification`)
-      return
-    }
-    return compare_password(current_password, current_password_hashed)
-  })
-  .then(() => hash_password(new_password))
-  .then(password_hashed => {
-    return session.run(`
-    // Find the user using ID
-    MATCH (employee:Employee)
-    WHERE id(employee) = toInteger($employee_id)
-
-    // Set the new password
-    SET employee.password_hashed = $password_hashed
-    SEt employee.password_changed = true
-
-    // Return employee once done
-    RETURN employee
-    `, { employee_id, password_hashed }
-    )
-  })
-  .then(({records}) => {
-
-    if(records.length < 1) throw 'Employee not found'
-
-    res.send( records[0].get('employee') )
-    console.log(`[Neo4J] Password of user ${employee_id} updated`)
-   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(error)
-  })
-  .finally( () => session.close() )
-
-
-}
 
 
 exports.delete_employee = (req, res) => {
