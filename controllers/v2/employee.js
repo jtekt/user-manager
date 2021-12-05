@@ -97,8 +97,6 @@ exports.create_employee = (req, res) => {
 exports.get_employee = (req, res) => {
   // Route to retrieve an employee's data
 
-  console.log('here?')
-
   // Retrieve employee ID
   // NOTE: Employee ID is NOT Employee number
   let employee_id = req.params.employee_id

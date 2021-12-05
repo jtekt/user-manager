@@ -1,11 +1,15 @@
 const bcrypt = require('bcrypt')
 const {drivers: {v2: driver}} = require('../../db.js')
 const {
+  send_password_reset_email,
+} = require('../../mail.js')
+const {
   get_current_user_id,
   hash_password,
   compare_password,
   generate_token
 } = require('../../utils.js')
+
 
 exports.update_password = async (req, res) => {
 
@@ -75,37 +79,37 @@ exports.update_password = async (req, res) => {
 
 exports.request_password_reset = async (req, res) => {
 
-  const {PASSWORD_RESET_URL} = process.env
-  if(!PASSWORD_RESET_URL) throw `PASSWORD_RESET_URL Not defined`
-
   const session = driver.session()
+
+  const {
+    PASSWORD_RESET_URL: url = req.headers.origin
+  } = process.env
 
   try {
     const {email_address} = req.body
     if(!email_address) throw 'Missing email address'
-
 
     const query = `
       MATCH (user:User)
       WHERE user.email_address = $email_address
       RETURN user
       `
-
     const {records} = await session.run(query, { email_address })
     if(!records.length) throw 'User does not seem to exist'
 
     const user = records[0].get('user')
-    const token = await generate_token(user)
 
-    // Send this shit by email and we're done
-    const reset_url = `${PASSWORD_RESET_URL}/reset?token=${token}`
+    const mail_options = {url, user}
+    await send_password_reset_email(mail_options)
 
     res.send({reset_url})
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
     res.status(500).send(e)
 
-  } finally {
+  }
+  finally {
     session.close()
   }
 
