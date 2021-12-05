@@ -7,7 +7,8 @@ const {
   get_current_user_id,
   hash_password,
   compare_password,
-  generate_token
+  generate_token,
+  error_handling,
 } = require('../../utils.js')
 
 
@@ -68,8 +69,7 @@ exports.update_password = async (req, res) => {
 
   }
   catch (error) {
-    console.log(error)
-    res.status(500).send(error)
+    error_handling(error, res)
   }
   finally {
     session.close()
@@ -87,7 +87,7 @@ exports.request_password_reset = async (req, res) => {
 
   try {
     const {email_address} = req.body
-    if(!email_address) throw 'Missing email address'
+    if(!email_address) throw {code: 400, message: 'Missing email address'}
 
     const query = `
       MATCH (user:User)
@@ -95,7 +95,7 @@ exports.request_password_reset = async (req, res) => {
       RETURN user
       `
     const {records} = await session.run(query, { email_address })
-    if(!records.length) throw 'User does not seem to exist'
+    if(!records.length) throw {code: 404, message: 'User not found'}
 
     const user = records[0].get('user')
 
@@ -104,9 +104,8 @@ exports.request_password_reset = async (req, res) => {
 
     res.send({email_address})
   }
-  catch (e) {
-    console.log(e)
-    res.status(500).send(e)
+  catch (error) {
+    error_handling(error, res)
 
   }
   finally {
