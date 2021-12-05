@@ -13,6 +13,7 @@ const {
   SMTP_FROM
 } = process.env
 
+
 const options = {
   host: SMTP_HOST,
   port: SMTP_PORT,
@@ -22,6 +23,7 @@ const options = {
     pass: SMTP_PASSWORD,
   },
 }
+
 
 const transporter = nodemailer.createTransport(options)
 
@@ -81,4 +83,10 @@ exports.send_password_reset_email = async ({url,user}) => {
     throw `Error while sending email: ${e}`
   }
 
+}
+
+exports.smtp = {
+  host: options.host,
+  port: options.port,
+  from: SMTP_FROM,
 }

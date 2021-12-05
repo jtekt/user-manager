@@ -10,7 +10,7 @@ const router_v2 = require('./routes/v2/employees.js')
 const group_router_v2 = require('./routes/v2/groups.js')
 const auth_router_v2 = require('./routes/v2/auth.js')
 const { create_admin_if_not_exists } = require('./controllers/v2/employee.js')
-
+const { smtp } = require('./mail.js')
 dotenv.config()
 
 // Express port
@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
     author,
     version,
     neo4j_url,
+    smtp,
   })
 })
 
