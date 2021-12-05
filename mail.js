@@ -67,16 +67,14 @@ exports.send_password_reset_email = async ({url,user}) => {
     const {email_address} = user.properties
     const token = await generate_token(user)
 
-    const activation_email = {
+    const email = {
       from: SMTP_FROM,
       to: email_address,
       subject: 'Password reset',
       text: `Click the following link to reset your password: ${url}/password_update?token=${token}`
     }
 
-    console.log(activation_email)
-
-    await send_email(activation_email)
+    await send_email(email)
 
     console.log(`[Mail] Sent password reset email to user ${email_address}`)
   } catch (e) {

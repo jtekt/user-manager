@@ -102,7 +102,7 @@ exports.request_password_reset = async (req, res) => {
     const mail_options = {url, user}
     await send_password_reset_email(mail_options)
 
-    res.send({reset_url})
+    res.send({email_address})
   }
   catch (e) {
     console.log(e)
