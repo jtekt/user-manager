@@ -341,21 +341,27 @@ exports.delete_employee = (req, res) => {
 
 }
 
-exports.create_admin_if_not_exists = () => {
+exports.create_admin_if_not_exists = async () => {
 
-  const default_admin_password = process.env.DEFAULT_ADMIN_PASSWORD
-    || 'administrator'
+  console.log(`[Neo4J] Creating admin account`)
 
   const session = driver.session()
 
-  hash_password(default_admin_password)
-  .then(default_admin_password_hashed => {
-    return session.run(`
+  try {
+    const {
+      DEFAULT_ADMIN_USERNAME: admin_uasername = 'administraotr',
+      DEFAULT_ADMIN_PASSWORD: admin_password = 'administrator',
+    } = process.env
+
+
+    const password_hashed = await hash_password(admin_password)
+
+    const query = `
       // Create a dummy node so that the administrator account does not get ID 0
       MERGE (dummy:DummyNode)
 
       // Find the administrator account or create it if it does not exist
-      MERGE (administrator:User:Employee {username:"administrator"})
+      MERGE (administrator:User:Employee {username:$admin_uasername})
 
       // Make the administrator an actual administrator
       SET administrator.isAdmin = true
@@ -364,21 +370,31 @@ exports.create_admin_if_not_exists = () => {
       // If the administrator account does not have a password (newly created), set it
       WITH administrator
       WHERE NOT EXISTS(administrator.password_hashed)
-      SET administrator.password_hashed = $default_admin_password_hashed
+      SET administrator.password_hashed = $password_hashed
 
       // Set some additional properties
       SET administrator.display_name = 'Administrator'
 
       // Return the account
       RETURN 'OK'
-      `, { default_admin_password_hashed })
-  })
-  .then(({records}) => {
+      `
+
+    const {records} = await session.run(query, { admin_uasername, password_hashed })
+
     if(records.length > 0) console.log(`[Neo4J] Admin creation: admin account created`)
     else console.log(`[Neo4J] Admin creation: admin already existed`)
-  })
-  .catch(error => { console.log(error) })
-  .finally( () => session.close())
+
+
+
+  } catch (error) {
+    console.log(error)
+
+  } finally {
+    session.close()
+  }
+
+
+
 }
 
 
