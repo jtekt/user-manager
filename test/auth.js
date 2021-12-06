@@ -7,15 +7,15 @@ dotenv.config()
 const sleep = (delay) => new Promise(resolve => setTimeout(resolve,delay))
 
 const {
-  TEST_USERNAME = 'admin',
-  TEST_PASSWORD = 'admin',
+  TEST_USERNAME = 'administrator',
+  TEST_PASSWORD = 'administrator',
 } = process.env
 
 // We will test for api users
 describe("/auth", () => {
 
   beforeEach( async () => {
-    console.log = function () {}
+    //console.log = function () {}
     await sleep(2000) // wait for admin account to create (DIRTY)
 
   })

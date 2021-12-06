@@ -70,7 +70,7 @@ test:
       --rm
       --name tdd-app
       --network tdd
-      --env NEO4J_URL=bolt://tdd-db:7687
+      --env NEO4J_URL=bolt://tdd-db
       --env JWT_SECRET=keyboardcat
       ${CONTAINER_IMAGE_TEST}
       npm run test
