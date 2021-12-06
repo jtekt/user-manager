@@ -10,10 +10,6 @@ const router = Router()
 router.route('/login')
   .post(login)
 
-router.route('/password')
-  .patch(update_password)
-  .put(update_password)
-
 router.route('/password/reset')
   .post(request_password_reset)
 
