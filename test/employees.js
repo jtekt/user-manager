@@ -7,8 +7,8 @@ dotenv.config()
 let jwt
 
 const {
-  TEST_USERNAME = 'admin',
-  TEST_PASSWORD = 'admin',
+  TEST_USERNAME = 'administrator',
+  TEST_PASSWORD = 'administrator',
 } = process.env
 
 // We will test for api users

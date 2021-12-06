@@ -72,6 +72,8 @@ test:
       --network tdd
       --env NEO4J_URL=bolt://tdd-db
       --env JWT_SECRET=keyboardcat
+      --env TEST_USERNAME=administrator
+      --env TEST_PASSWORD=administrator
       ${CONTAINER_IMAGE_TEST}
       npm run test
     # If pass, then push the images
