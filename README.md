@@ -1,5 +1,6 @@
 # Employees manager
-A microservice to handle employee information. Based on https://gitlab.com/moreillon_k8s/user_manager
+A microservice to handle user information and authentication. Based on https://gitlab.com/moreillon_k8s/user_manager.
+
 
 ## API
 | Route | Method | Query / body | Description |
