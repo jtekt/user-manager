@@ -13,6 +13,8 @@ const { create_admin_if_not_exists } = require('./controllers/v2/employee.js')
 const { smtp } = require('./mail.js')
 dotenv.config()
 
+banana
+
 // Express port
 const APP_PORT = process.env.APP_PORT || 80
 
