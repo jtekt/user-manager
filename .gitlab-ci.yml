@@ -17,6 +17,8 @@ services:
 
 build:
   stage: build
+  tags:
+    - dind
   before_script:
     # Docker hub login
     - >
