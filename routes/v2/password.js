@@ -5,7 +5,7 @@ const {
 } = require('../../controllers/v2/password.js')
 
 
-const router = Router()
+const router = Router({mergeParams: true})
 
 router.route('/')
   .patch(update_password)

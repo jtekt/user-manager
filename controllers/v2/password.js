@@ -9,63 +9,60 @@ const {
   compare_password,
   generate_token,
   error_handling,
+  user_query,
 } = require('../../utils.js')
 
 
 exports.update_password = async (req, res) => {
 
-  // Input parsing
-  const {new_password, new_password_confirm} = req.body
 
-  if(!new_password) return res.status(400).send(`New nassword missing`)
-  if(!new_password_confirm) return res.status(400).send(`New password confirm missing`)
-
-  // Get current user ID
-  const current_user_id = get_current_user_id(res)
-  const user_is_admin = res.locals.user.properties.isAdmin
-
-  // Retrieve user ID
-  let {employee_id} = req.params
-  if(employee_id === 'self') employee_id = current_user_id
-  if(!employee_id) employee_id = current_user_id
-
-  // Prevent an user from modifying another's password
-  if(String(employee_id) !== String(current_user_id) && !user_is_admin) {
-    return res.status(403).send(`Unauthorized to modify another user's password`)
-  }
 
   const session = driver.session()
 
   try {
 
-    const user_query = `
-      MATCH (employee:Employee)
-      WHERE id(employee) = toInteger($employee_id)
-      RETURN employee.password_hashed as password
-      `
+    // Input parsing
+    const {new_password, new_password_confirm} = req.body
 
-    const {records: user_records} = await session.run(user_query, { employee_id })
-    if(!user_records.length) throw 'Employee not found'
+    if(!new_password) throw {code: 400, message: `New password missing`}
+    if(!new_password_confirm) throw {code: 400, message: `New password confirm missing`}
+    if(new_password !== new_password_confirm) throw {code: 400, message: `Password mismatch`}
+
+    // Get current user ID
+    const current_user_id = get_current_user_id(res)
+    const user_is_admin = res.locals.user.properties.isAdmin
+
+
+    // Retrieve user ID
+    let {user_id} = req.params
+    if(user_id === 'self') user_id = current_user_id
+
+
+    if(!user_id)  throw {code: 400, message: `Missing user ID`}
+
+    // Prevent an user from modifying another's password
+    if(String(user_id) !== String(current_user_id) && !user_is_admin) {
+      throw {code: 403, message: `Unauthorized to modify another user's password`}
+    }
+
 
     const password_hashed = await hash_password(new_password)
 
-    const password_update_query = `
-      // Find the user using ID
-      MATCH (employee:Employee)
-      WHERE id(employee) = toInteger($employee_id)
-
-      // Set the new password
-      SET employee.password_hashed = $password_hashed
-      SEt employee.password_changed = true
-
-      RETURN employee
+    const query = `
+      ${user_query}
+      SET user.password_hashed = $password_hashed
+      SET user.password_changed = true
+      RETURN user
       `
 
-    const {records} = await session.run(password_update_query, { employee_id, password_hashed })
-    if(!records.length) throw 'Password update failed'
 
-    res.send( records[0].get('employee') )
-    console.log(`[Neo4J] Password of user ${employee_id} updated`)
+
+    const {records} = await session.run(query, { user_id, password_hashed })
+    if(!records.length) throw {code: 404, message: `Employee ${user_id} not found`}
+    // NEED TO REMOVE PASSWORD HASHED FROM RESPONSE
+
+    res.send( records[0].get('user') )
+    console.log(`[Neo4J] Password of user ${user_id} updated`)
 
   }
   catch (error) {

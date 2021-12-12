@@ -14,9 +14,9 @@ const {
 // We will test for api users
 describe("/auth", () => {
 
-  beforeEach( async () => {
+  before( async () => {
     //console.log = function () {}
-    await sleep(5000) // wait for admin account to create (DIRTY)
+    await sleep(1000) // wait for admin account to create (DIRTY)
 
   })
 

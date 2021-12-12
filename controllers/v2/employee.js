@@ -1,132 +1,117 @@
 const {drivers: {v2: driver}} = require('../../db.js')
-const bcrypt = require('bcrypt')
+const dotenv = require('dotenv')
+const newUserSchema = require('../../schemas/newUser.js')
 const {
   get_current_user_id,
   hash_password,
   compare_password,
+  user_query,
+  user_id_filter,
+  error_handling,
+
 } = require('../../utils.js')
 
+dotenv.config()
 
 
+exports.create_user = async (req, res) => {
 
-
-exports.create_employee = (req, res) => {
-
-  // WARNING: USER COULD BE CREATED WITH MORE PROPERTIES THAN ANTICIPATED
-
-  const current_user_id =  get_current_user_id(res)
-
-  // Prevent normal users to create a user
-  if(!res.locals.user.properties.isAdmin){
-    console.log(`Unauthorized to create a user`)
-    return res.status(403).send(`Unauthorized to create a user`)
-  }
-
-  const mandatory_properties = [
-    'email_address',
-    'employee_number',
-    'first_name',
-    'family_name',
-  ]
-
-  // compute a list of properties missing from the body
-  const missing_properties = mandatory_properties.filter( key => !req.body[key] )
-
-  if(missing_properties.length > 0 ) {
-    const message = `Missing properties: ${missing_properties.join(', ')}`
-    console.log(message)
-    return res.status(400).send(message)
-  }
-
-  const password_plain = req.body.password || req.body.employee_number
 
   const session = driver.session()
 
-  hash_password(password_plain)
-  .then(password_hashed => {
+  try {
 
-    const new_employee_properties = {
-      password_hashed,
-      email_address: req.body.email_address,
-      employee_number: req.body.employee_number,
-      first_name: req.body.first_name,
-      family_name: req.body.family_name,
-      name: `${req.body.family_name} ${req.body.first_name}`,
-      display_name: `${req.body.family_name} ${req.body.first_name}`,
+    if(!res.locals.user.properties.isAdmin){
+      throw {code: 403, message: `Only administrators can create users`, tag: 'Auth'}
     }
+
+    const properties = req.body
+    try {
+      await newUserSchema.validateAsync(properties)
+    } catch (error) {
+      throw {code: 400, message: error}
+    }
+
+
+    const {
+      username,
+      password,
+      email_address,
+    } = properties
+
+    const password_hashed = await hash_password(password)
 
     const query = `
-      // Merge by email_address since unique
-      MERGE (employee:Employee:User {email_address:$properties.email_address})
+      // Merge with email_address as unique
+      MERGE (user:User:Employee {email_address: $email_address})
 
-      // Prevent duplicates
-      WITH employee
-      WHERE NOT EXISTS(employee.password_hashed)
+      // if the user does not have a uuid, it means the user has not been registered
+      // if the user exists, then further execution will be stopped
+      WITH user
+      WHERE NOT EXISTS(user._id)
+      SET user._id = randomUUID() // THIS IS IMPORTANT
+      SET user.password_hashed = $password_hashed
 
-      // Update the employee properties
-      // += implies update of existing properties
-      // DO NOT FORGET the '+'!
-      SET employee += $properties
-
-      RETURN employee
+      // Return the account
+      RETURN user
       `
 
-    const parameters = {properties: new_employee_properties}
+    const params = { email_address, password_hashed, }
 
-    return session.run(query, parameters)
-  })
-  .then(result => {
+    const {records} = await session.run(query,params)
 
-    if(records.length < 1) {
-      console.log(`[Neo4J] Failed attempt at creating duplicate user ${req.body.email_address}`)
-      return res.status(400).send(`User ${req.body.email_address} already exists`)
-    }
+    // No record implies that the user already existed
+    if(!records.length) throw {code: 400, message: `User already exists`, tag: 'Neo4J'}
 
-    res.send(result.records[0].get('employee'))
-    console.log(`[Neo4J] New employee created`)
-  })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error updating user: ${error}`)
-  })
-  .finally( () => session.close())
+    const user = records[0].get('user')
+    console.log(`[Neo4J] User ${user.properties._id} created`)
+    res.send(user)
+
+
+  }
+  catch (error) {
+    error_handling(error,res)
+  }
+   finally {
+    session.close()
+  }
+
 
 
 }
 
-exports.get_employee = (req, res) => {
+exports.get_user = (req, res) => {
+
   // Route to retrieve an employee's data
 
   // Retrieve employee ID
   // NOTE: Employee ID is NOT Employee number
-  let employee_id = req.params.employee_id
-  if(employee_id === 'self') employee_id = get_current_user_id(res)
-  if(!employee_id) return res.status(400).send(`employee_id not defined`)
+  let {user_id} = req.params
+  if(user_id === 'self') user_id = get_current_user_id(res)
+  if(!user_id) return res.status(400).send(`user_id not defined`)
+
+
+  const query = `
+    ${user_query}
+    RETURN user
+    `
 
   const session = driver.session()
   session
-  .run(`
-    // Find the employee using the ID
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInteger($employee_id)
-
-    RETURN employee
-    `, {
-    employee_id,
-  })
+  .run(query, { user_id })
   .then( ({records}) => {
 
     if(!records.length) {
-      console.log(`[Neo4J] User ${employee_id} not found`)
-      return res.status(400).send(`User ${employee_id} not found`)
+      console.log(`[Neo4J] User ${user_id} not found`)
+      return res.status(400).send(`User ${user_id} not found`)
     }
 
-    const employee = records[0].get('employee')
-    delete employee.properties.password_hashed
+    const user = records[0].get('user')
+    delete user.properties.password_hashed
 
-    res.send(employee)
+    res.send(user)
 
-    console.log(`[Neo4J] Profile of user ${employee_id} queried`)
+    console.log(`[Neo4J] Profile of user ${user_id} queried`)
   })
   .catch(error => {
     console.error(error)
@@ -135,7 +120,7 @@ exports.get_employee = (req, res) => {
   .finally( () => { session.close() })
 }
 
-exports.get_employees = (req, res) => {
+exports.get_users = (req, res) => {
   // Route to retrieve employees
 
   const {search, ids, employee_numbers} = req.query
@@ -145,45 +130,47 @@ exports.get_employees = (req, res) => {
     search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
+    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
 
     // Unwinding
     UNWIND keys as key
 
     // Filter nodes by looking for properties
-    WITH key, employee
-    WHERE toLower(toString(employee[key])) CONTAINS toLower($search)
+    WITH key, user
+    WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
   }
 
   let ids_query = ''
   if(ids) {
     search_query = `
-    WITH employee
+    WITH user
     UNWIND $ids as id
-    WITH id, employee
-    WHERE id(employee)=toInteger(id)
+    WITH id, user
+    WHERE user._id = toString(id)
     `
   }
 
+  // specific to this app
+  // UNUSED
   let employee_numbers_query = ''
   if(employee_numbers) {
     search_query = `
-    WITH employee
+    WITH user
     UNWIND $employee_numbers as employee_number
-    WITH employee_number, employee
-    WHERE employee.employee_number=employee_number
+    WITH employee_number, user
+    WHERE user.employee_number=employee_number
     `
   }
 
   const query = `
-    // Find the employee using the ID
-    MATCH (employee:Employee)
-
+    MATCH (user:User)
     ${search_query}
     ${ids_query}
 
-    RETURN DISTINCT employee
+    RETURN DISTINCT user
+
+    // TODO: BATCHING
 
     LIMIT 200
     `
@@ -192,18 +179,17 @@ exports.get_employees = (req, res) => {
     exceptions: [ 'password_hashed' ],
     search,
     ids,
-    employee_numbers,
   }
 
   const session = driver.session()
   session.run(query, parameters)
   .then(({records}) => {
 
-    const employees = records.map(record => record.get('employee'))
+    const employees = records.map(record => record.get('user'))
     employees.forEach( employee => { delete employee.properties.password_hashed })
 
     res.send( employees )
-    console.log(`[Neo4J] Employees queried`)
+    console.log(`[Neo4J] Users queried`)
    })
   .catch(error => {
     console.error(error)
@@ -212,23 +198,22 @@ exports.get_employees = (req, res) => {
   .finally( () => { session.close() })
 }
 
-exports.patch_employee = (req, res) => {
+exports.patch_user = (req, res) => {
 
   const current_user_id = get_current_user_id(res)
 
-  let employee_id = req.params.employee_id
-    || req.params.user_id
-    || req.params.id
+  let {user_id} = req.params
+  if(user_id === 'self') user_id = current_user_id
 
-  if(employee_id === 'self') employee_id = current_user_id
+  const properties = req.body
 
-  if(!employee_id) {
-    console.log(`Missing employee ID`)
-    res.status(400).send(`Missing employee ID`)
+  if(!user_id) {
+    console.log(`Missing user_id`)
+    return res.status(400).send(`Missing user_id`)
   }
 
   // Prevent normal users to modify another user
-  if(!res.locals.user.properties.isAdmin && employee_id != current_user_id){
+  if(!res.locals.user.properties.isAdmin && user_id != current_user_id){
     return res.status(403).send(`Unauthorized to modify another user's data`)
   }
 
@@ -251,50 +236,48 @@ exports.patch_employee = (req, res) => {
   ]
 
   if(res.locals.user.properties.isAdmin) {
-    customizable_fields= customizable_fields.concat([
+    customizable_fields = [
+      ...customizable_fields,
       'isAdmin',
       'role',
       'locked',
       'employee_number',
-    ])
+    ]
   }
 
 
   // prevent user from modifying disallowed properties
-  for (let [key, value] of Object.entries(req.body)) {
+  for (let [key, value] of Object.entries(properties)) {
     if(!customizable_fields.includes(key)){
       console.log(`Attempt to modify forbidden key: ${key}`)
       return res.status(403).send(`Not allowed to modify property ${key}`)
     }
   }
 
-  var session = driver.session()
-  session
-  .run(`
-    // Find the user
-    MATCH (employee:Employee)
-    WHERE id(employee)=toInteger($employee_id)
+  const session = driver.session()
 
-    // Patch properties
+  const query = `
+    ${user_query}
+
     // += implies update of existing properties
-    SET employee += $properties
+    SET user += $properties
 
-    RETURN employee
-    `, {
-    employee_id,
-    properties: req.body,
-  })
+    RETURN user
+    `
+  const params = { user_id, properties }
+
+  session.run(query, params)
   .then(({records}) => {
 
-    if(records.length < 1) {
-      console.log(`[Neo4J] User ${employee_id} not found`)
-      return res.status(400).send(`User ${employee_id} not found`)
+    if(!records.length) {
+      console.log(`[Neo4J] User ${user_id} not found`)
+      return res.status(400).send(`User ${user_id} not found`)
     }
 
-    res.send( records[0].get('employee') )
-    console.log(`User ${employee_id} patched`)
+    res.send( records[0].get('user') )
+    console.log(`User ${user_id} patched`)
   })
-  .catch(error => { res.status(500).send(`Error updating user: ${error}`) })
+  .catch(error => { error_handling(error,res)})
   .finally( () => session.close())
 
 }
@@ -302,40 +285,37 @@ exports.patch_employee = (req, res) => {
 
 
 
-exports.delete_employee = (req, res) => {
+exports.delete_user = (req, res) => {
 
-  // Prevent normal users to create a user
+  // Prevent normal users to delete a user
   if(!res.locals.user.properties.isAdmin){
-    console.log(`Unauthorized to create a user`)
-    return res.status(403).send(`Unauthorized to create a user`)
+    console.log(`Unauthorized to delete a user`)
+    return res.status(403).send(`Unauthorized to delete a user`)
   }
 
-  const employee_id = req.params.employee_id
+  const {user_id} = req.params
 
-  if(!employee_id) {
-    console.log(`Employee ID not defined`)
-    return res.status(403).send(`Employee ID not defined`)
+  if(!user_id) {
+    console.log(`user_id not defined`)
+    return res.status(400).send(`user_id not defined`)
   }
 
-  var session = driver.session()
+  const session = driver.session()
+
+  const query = `
+    ${user_query}
+    DETACH DELETE (user)
+    RETURN $user_id
+    `
+
   session
-  .run(`
-    // Merge by email_address since unique
-    MATCH (employee:Employee:User)
-    WHERE id(employee) = toInteger($employee_id)
-
-    DETACH DELETE (employee)
-    `, {
-    employee_id,
+  .run(query, {user_id })
+  .then( ({records}) => {
+    if(!records.length) throw {code: 404, message: `User ${user_id} deletion failed`}
+    res.send({user_id})
+    console.log(`User ${user_id} deleted`)
   })
-  .then(result => {
-    res.send('OK')
-    console.log(`Employee ${employee_id} deleted`)
-  })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error updating user: ${error}`)
-  })
+  .catch(error => { error_handling(error, res) })
   .finally( () => session.close())
 
 
@@ -349,7 +329,7 @@ exports.create_admin_if_not_exists = async () => {
 
   try {
     const {
-      DEFAULT_ADMIN_USERNAME: admin_uasername = 'administrator',
+      DEFAULT_ADMIN_USERNAME: admin_username = 'administrator',
       DEFAULT_ADMIN_PASSWORD: admin_password = 'administrator',
     } = process.env
 
@@ -357,11 +337,8 @@ exports.create_admin_if_not_exists = async () => {
     const password_hashed = await hash_password(admin_password)
 
     const query = `
-      // Create a dummy node so that the administrator account does not get ID 0
-      MERGE (dummy:DummyNode)
-
       // Find the administrator account or create it if it does not exist
-      MERGE (administrator:User:Employee {username:$admin_uasername})
+      MERGE (administrator:User {username:$admin_username})
 
       // Make the administrator an actual administrator
       SET administrator.isAdmin = true
@@ -374,12 +351,13 @@ exports.create_admin_if_not_exists = async () => {
 
       // Set some additional properties
       SET administrator.display_name = 'Administrator'
+      SET administrator._id = randomUUID() // THIS IS IMPORTANT
 
       // Return the account
       RETURN administrator
       `
 
-    const {records} = await session.run(query, { admin_uasername, password_hashed })
+    const {records} = await session.run(query, { admin_username, password_hashed })
 
     if(records.length) console.log(`[Neo4J] Admin creation: admin account created`)
     else console.log(`[Neo4J] Admin creation: admin already existed`)
@@ -399,7 +377,7 @@ exports.create_admin_if_not_exists = async () => {
 
 
 exports.get_employees_of_group = (req, res) => {
-  // Route to retrieve an employee's data
+  // Route to retrieve employees of a group
 
   // Retrieve employee ID
   let {group_id} = req.params
@@ -409,7 +387,8 @@ exports.get_employees_of_group = (req, res) => {
   .run(`
     // Find the employee using the ID
     MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE id(group)=toInteger($group_id)
+    WHERE group._id = $group_id
+      // OR id(group)=toInteger($group_id) // REMOVED QUERY USING INTERNAL ID
 
     with employee
     MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)-[:WORKS_IN]->(workplace:Workplace)

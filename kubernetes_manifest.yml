@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: ${APPLICATION_NAME}
-        image: ${CONTAINER_IMAGE_TAGGED}
+        image: ${CONTAINER_IMAGE}:3.0.3
         ports:
         - containerPort: 80
         # Get environment variables from secret

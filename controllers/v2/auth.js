@@ -5,14 +5,19 @@ const {
   generate_token,
   compare_password,
   error_handling,
+  get_id_of_user,
+  user_query
 } = require('../../utils.js')
 
 
 const retrieve_jwt = (req, res) => new Promise( (resolve, reject) => {
 
+  // Did not have to be a promise
+
   const jwt = req.headers.authorization?.split(" ")[1]
     || req.headers.authorization
     || (new Cookies(req, res)).get('jwt')
+    || (new Cookies(req, res)).get('token')
     || req.query.jwt
     || req.query.token
 
@@ -21,14 +26,14 @@ const retrieve_jwt = (req, res) => new Promise( (resolve, reject) => {
   resolve(jwt)
 })
 
-const register_last_login = async (user_id) => {
+const register_last_login = async (user) => {
 
   const session = driver.session()
 
   try {
+    const user_id = get_id_of_user(user)
     const query = `
-      MATCH (user:User)
-      WHERE id(user) = toInteger($user_id)
+      ${user_query}
       SET user.last_login = date()
       RETURN user
       `
@@ -47,17 +52,21 @@ const register_last_login = async (user_id) => {
 const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
   // The error management here is quite bad
   const session = driver.session()
-  session.run(`
+
+  const query = `
     MATCH (user:User)
 
     // Allow user to identify using either userrname or email address
-    WHERE user.username=$identifier
-      OR user.email_address=$identifier
-      OR id(user) = toInteger($identifier)
+    WHERE user.username = $identifier
+      OR user.email_address = $identifier
+      OR user._id = $identifier
+      //OR id(user) = toInteger($identifier) // <= REMOVED!!
 
     // Return user if found
     RETURN user
-    `, { identifier })
+    `
+
+  session.run(query, { identifier })
   .then(result => {
 
     if(!result.records.length) return reject({code: 400, message: `User ${identifier} not found`, tag: 'Neo4J'})
@@ -120,11 +129,11 @@ exports.login = async (req, res) => {
     const password_correct = await compare_password(password, user.properties.password_hashed)
     if(!password_correct) throw {code: 403, message: `Incorrect password`}
 
-    await register_last_login(user.identity)
+    await register_last_login(user)
 
     const jwt = await generate_token(user)
 
-    res.send({jwt})
+    res.send({jwt,user})
 
     console.log(`[Auth] Successful login from user identified as ${identifier}`)
   }

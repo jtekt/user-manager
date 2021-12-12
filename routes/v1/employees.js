@@ -1,19 +1,17 @@
-const express = require('express')
-const controller = require('../../controllers/v1/employee.js')
+const {Router} = require('express')
+const {
+  get_employees,
+  get_employee
+} = require('../../controllers/v1/employee.js')
 
-const router = express.Router()
+const router = Router()
 
 // use the router
 router.route('/')
-  .get(controller.get_employees)
-  .post(controller.create_employee)
+  .get(get_employees)
 
 router.route('/:employee_id')
-  .get(controller.get_employee)
-  .patch(controller.patch_employee)
-  .delete(controller.delete_employee)
+  .get(get_employee)
 
-router.route('/:employee_id/password')
-  .put(controller.update_password)
 
 module.exports = router
