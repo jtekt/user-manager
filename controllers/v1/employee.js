@@ -76,7 +76,7 @@ exports.get_employees = (req, res) => {
   session
   .run(`
     // Find the employee using the ID
-    MATCH (employee:Employee)
+    MATCH (employee:User:Employee)
 
     ${search_query}
     ${ids_query}
