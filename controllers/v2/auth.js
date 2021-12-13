@@ -70,16 +70,7 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
   .then( ({records}) => {
 
     if(!records.length) return reject({code: 400, message: `User ${identifier} not found`, tag: 'Neo4J'})
-
-
-
-    if(records.length > 1) {
-      records.forEach((record, i) => {
-        const user = record.get('user')
-        console.log(user)
-      })
-      return reject({code: 500, message: `Multiple users identitfied as ${identifier} found`, tag: 'Neo4J'})
-    }
+    if(records.length > 1) return reject({code: 500, message: `Multiple users identitfied as ${identifier} found`, tag: 'Neo4J'})
 
     const user = records[0].get('user')
 
@@ -110,8 +101,6 @@ exports.middleware = async (req, res, next) => {
     if(records.length > 1) throw `Multiple users with ID ${user_id} found in the database`
 
     const user = records[0].get('user')
-
-    // const user = await find_user_in_db(user_id)
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user

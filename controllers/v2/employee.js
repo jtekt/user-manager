@@ -94,14 +94,9 @@ exports.get_user = (req, res) => {
   // was needed for whereabouts
   user_id = user_id.toString()
 
-  const query = `
-    ${user_query}
-    RETURN user
-    `
-
   const session = driver.session()
-  session
-  .run(query, { user_id })
+  const query = `${user_query} RETURN user`
+  session.run(query, { user_id })
   .then( ({records}) => {
 
     if(!records.length) {
