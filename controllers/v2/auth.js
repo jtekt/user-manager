@@ -58,6 +58,7 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
 
     // Allow user to identify using either userrname or email address
     WHERE user.email_address = $identifier
+      OR user.username = $identifier
       OR user._id = $identifier
       //OR id(user) = toInteger($identifier) // <= REMOVED!!
 
@@ -96,18 +97,33 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
 
 exports.middleware = async (req, res, next) => {
 
+  const session = driver.session()
+
   try {
     const token = await retrieve_jwt(req, res)
     const {user_id} = await decode_token(token)
-    const user = await find_user_in_db(user_id)
+
+    const query = `${user_query} RETURN user`
+    const {records} = await session.run(query, {user_id})
+
+    if(!records.length) throw `User ${user_id} not found in the database`
+    if(records.length > 1) throw `Multiple users with ID ${user_id} found in the database`
+
+    const user = records[0].get('user')
+
+    // const user = await find_user_in_db(user_id)
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user
+
     next()
   }
   catch (error) {
     console.log(error)
     res.status(403).send(error)
+  }
+  finally {
+    session.close()
   }
 
 }
