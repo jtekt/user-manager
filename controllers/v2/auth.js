@@ -57,22 +57,32 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
     MATCH (user:User)
 
     // Allow user to identify using either userrname or email address
-    WHERE user.username = $identifier
-      OR user.email_address = $identifier
+    WHERE user.email_address = $identifier
       OR user._id = $identifier
       //OR id(user) = toInteger($identifier) // <= REMOVED!!
 
     // Return user if found
-    RETURN user
+    RETURN DISTINCT(user)
     `
 
   session.run(query, { identifier })
-  .then(result => {
+  .then( ({records}) => {
 
-    if(!result.records.length) return reject({code: 400, message: `User ${identifier} not found`, tag: 'Neo4J'})
-    if(result.records.length > 1) return reject({code: 500, message: `Multiple users found`, tag: 'Neo4J'})
+    if(!records.length) return reject({code: 400, message: `User ${identifier} not found`, tag: 'Neo4J'})
 
-    const user = result.records[0].get('user')
+
+
+    if(records.length > 1) {
+      records.forEach((record, i) => {
+        const user = record.get('user')
+        console.log(user)
+      })
+      return reject({code: 500, message: `Multiple users identitfied as ${identifier} found`, tag: 'Neo4J'})
+    }
+
+    const user = records[0].get('user')
+
+    console.log(`[Neo4j] User ${identifier} successfully found in the DB`)
 
     resolve(user)
   })
@@ -135,7 +145,7 @@ exports.login = async (req, res) => {
 
     res.send({jwt,user})
 
-    console.log(`[Auth] Successful login from user identified as ${identifier}`)
+    console.log(`[Auth v2] Successful login from user identified as ${identifier}`)
   }
   catch (error) {
     error_handling(error, res)

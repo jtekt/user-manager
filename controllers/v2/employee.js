@@ -90,8 +90,9 @@ exports.get_user = (req, res) => {
   if(user_id === 'self') user_id = get_current_user_id(res)
   if(!user_id) return res.status(400).send(`user_id not defined`)
 
+  // Forcing as string, hopefully just temporary
+  // was needed for whereabouts
   user_id = user_id.toString()
-
 
   const query = `
     ${user_query}
