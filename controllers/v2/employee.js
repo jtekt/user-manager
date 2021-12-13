@@ -362,7 +362,7 @@ exports.create_admin_if_not_exists = async () => {
 
     const {records} = await session.run(query, { admin_username, password_hashed })
 
-    if(records.length) console.log(`[Neo4J] Admin creation: admin account created`)
+    if(records.length) console.log(`[Neo4J] Admin creation: user ${admin_username} created`)
     else console.log(`[Neo4J] Admin creation: admin already existed`)
 
 
