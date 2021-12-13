@@ -50,10 +50,6 @@ describe("/v1/users", () => {
         .get("/v1/users/")
         .set('Authorization', `Bearer ${admin_jwt}`)
 
-
-
-      console.log(body)
-
       expect(status).to.equal(200)
       expect(body.length).to.be.above(0)
     })
