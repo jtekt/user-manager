@@ -17,6 +17,7 @@ const get_id_of_user = (user) => {
     ?? user.identity.low
     ?? user.identity
 }
+
 exports.get_id_of_user = get_id_of_user
 
 exports.get_current_user_id = (res) => {

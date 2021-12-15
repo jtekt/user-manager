@@ -35,7 +35,7 @@ const register_last_login = async (user) => {
     const query = `
       ${user_query}
       SET user.last_login = date()
-      RETURN user
+      RETURN user.last_login as last_login
       `
     await session.run(query, {user_id})
   }
@@ -63,7 +63,7 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
       //OR id(user) = toInteger($identifier) // <= REMOVED!!
 
     // Return user if found
-    RETURN DISTINCT(user)
+    RETURN properties(user) as user
     `
 
   session.run(query, { identifier })
@@ -94,7 +94,11 @@ exports.middleware = async (req, res, next) => {
     const token = await retrieve_jwt(req, res)
     const {user_id} = await decode_token(token)
 
-    const query = `${user_query} RETURN user`
+    const query = `
+      ${user_query}
+      RETURN properties(user) as user
+      `
+
     const {records} = await session.run(query, {user_id})
 
     if(!records.length) throw `User ${user_id} not found in the database`
@@ -138,10 +142,10 @@ exports.login = async (req, res) => {
     const user = await find_user_in_db(identifier)
 
     // Lock check
-    if(user.properties.locked) throw {code: 403, message: `This account is locked`}
+    if(user.locked) throw {code: 403, message: `This account is locked`}
 
     // Password check
-    const password_correct = await compare_password(password, user.properties.password_hashed)
+    const password_correct = await compare_password(password, user.password_hashed)
     if(!password_correct) throw {code: 403, message: `Incorrect password`}
 
     await register_last_login(user)

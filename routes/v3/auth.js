@@ -1,6 +1,6 @@
 const {Router} = require('express')
-const { login } = require('../../controllers/v2/auth.js')
-const { request_password_reset } = require('../../controllers/v2/password.js')
+const { login } = require('../../controllers/v3/auth.js')
+const { request_password_reset } = require('../../controllers/v3/password.js')
 
 const router = Router()
 

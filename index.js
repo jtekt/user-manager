@@ -3,11 +3,11 @@ const cors = require('cors')
 const dotenv = require('dotenv')
 const apiMetrics = require('prometheus-api-metrics')
 const {version, author, name: application_name} = require('./package.json')
-const { middleware: auth_middleware } = require('./controllers/v2/auth.js')
-const router_v1 = require('./routes/v1/employees.js')
-const router_v2 = require('./routes/v2/employees.js')
-const group_router_v2 = require('./routes/v2/groups.js')
-const auth_router_v2 = require('./routes/v2/auth.js')
+
+const router_v1 = require('./routes/v1/index.js')
+const router_v2 = require('./routes/v2/index.js')
+const router_v3 = require('./routes/v3/index.js')
+
 const { create_admin_if_not_exists } = require('./controllers/v2/employee.js')
 const { smtp } = require('./mail.js')
 const {
@@ -47,18 +47,13 @@ app.get('/', (req, res) => {
   })
 })
 
-// Auth route is not protected
-app.use('/v2/auth', auth_router_v2)
 
-// Authenticate all the followign routes
-app.use(auth_middleware)
-app.use('/employees', router_v1)
-app.use('/users', router_v1) // alias
-app.use('/v1/employees', router_v1) // alias
-app.use('/v1/users', router_v1) // alias
-app.use('/v2/employees', router_v2)
-app.use('/v2/users', router_v2) // alias
-app.use('/v2/groups', group_router_v2)
+app.use('/', router_v1)
+app.use('/v1', router_v1)
+
+app.use('/v2', router_v2)
+app.use('/v3', router_v3)
+
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`[Express] listening on port ${APP_PORT}`))

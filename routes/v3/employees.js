@@ -6,9 +6,11 @@ const {
   get_user,
   patch_user,
   delete_user
-} = require('../../controllers/v2/employee.js')
+} = require('../../controllers/v3/employee.js')
+
 
 const router = Router({mergeParams: true})
+
 
 router.route('/')
   .get(get_users)
