@@ -38,7 +38,9 @@ exports.generate_token = (user) => new Promise( (resolve, reject) => {
   const JWT_SECRET = process.env.JWT_SECRET
   if(!JWT_SECRET) return reject({code: 500, message: `Token secret not set`})
 
-  const user_id = get_id_of_user(user)
+  // Forcing string
+  const user_id = get_id_of_user(user).toString()
+
   const token_content = { user_id }
 
   jwt.sign(token_content, JWT_SECRET, (error, token) => {

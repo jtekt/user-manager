@@ -95,9 +95,11 @@ exports.middleware = async (req, res, next) => {
     const {user_id} = await decode_token(token)
 
     const query = `${user_query} RETURN user`
-    const {records} = await session.run(query, {user_id})
+    
+    const params = {user_id: user_id.toString()} // Forcing string
+    const {records} = await session.run(query, params)
 
-    if(!records.length) throw `User ${user_id} not found in the database`
+    if(!records.length) throw `[Neo4J] User ${user_id} not found in the database`
     if(records.length > 1) throw `Multiple users with ID ${user_id} found in the database`
 
     const user = records[0].get('user')

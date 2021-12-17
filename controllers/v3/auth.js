@@ -98,8 +98,8 @@ exports.middleware = async (req, res, next) => {
       ${user_query}
       RETURN properties(user) as user
       `
-
-    const {records} = await session.run(query, {user_id})
+    const params = {user_id: user_id.toString()} // Forcing string
+    const {records} = await session.run(query, params)
 
     if(!records.length) throw `User ${user_id} not found in the database`
     if(records.length > 1) throw `Multiple users with ID ${user_id} found in the database`
