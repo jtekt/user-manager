@@ -3,17 +3,20 @@ stages:
   - test
   - deploy
 
+
+image: moreillon/ci-dind:4bca50d7
+services:
+  - name: docker:19.03.12-dind
+
 variables:
   APPLICATION_NAME: employee-manager
+  ECR_URL: 732469118990.dkr.ecr.ap-northeast-1.amazonaws.com
   CONTAINER_IMAGE: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
   CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
   CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
   CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
+  K8S_ECR_SECRET_NAME: ecr-credentials
 
-
-services:
-  - name: docker:19.03.12-dind
-    # command: ["--insecure-registry=172.16.98.151:5000"]
 
 build:
   stage: build
@@ -21,11 +24,24 @@ build:
     - dind
   before_script:
     # Docker hub login
+    # Should not be used anymore in the future
     - >
       echo "${DOCKER_HUB_PASSWORD}" |
       docker login
       --username ${DOCKER_HUB_USERNAME}
       --password-stdin
+    # ECR login for pushing and pulling
+    - >
+      aws ecr get-login-password
+      | docker login
+      --username AWS
+      --password-stdin
+      ${ECR_URL}
+    # Create repository if needed
+    - >
+      aws ecr create-repository --repository-name ${APPLICATION_NAME}
+      || echo "Repository might have already existed"
+
   script:
     # Build the docker image. Pass proxy variables if set
     - docker build -t ${CONTAINER_IMAGE_TEST} .
@@ -49,6 +65,13 @@ test:
       docker login
       --username ${DOCKER_HUB_USERNAME}
       --password-stdin
+    # ECR login for pushing and pulling
+    - >
+      aws ecr get-login-password
+      | docker login
+      --username AWS
+      --password-stdin
+      ${ECR_URL}
     # Creating network for TDD
     - docker network create tdd
     - >
@@ -89,6 +112,14 @@ deploy:
   stage: deploy
   only:
     - master
+  before_script:
+    - >
+      kubectl create secret docker-registry ${K8S_ECR_SECRET_NAME}
+      --docker-server=${CONTAINER_REGISTRY_URL}
+      --docker-username=AWS
+      --docker-password $(aws ecr get-login-password)
+      --dry-run=client -o yaml
+      | kubectl apply -f -
   script:
     # create/update the deployment
     - envsubst < kubernetes_manifest.yml | kubectl apply -f -
