@@ -115,7 +115,7 @@ deploy:
   before_script:
     - >
       kubectl create secret docker-registry ${K8S_ECR_SECRET_NAME}
-      --docker-server=${CONTAINER_REGISTRY_URL}
+      --docker-server=${ECR_URL}
       --docker-username=AWS
       --docker-password $(aws ecr get-login-password)
       --dry-run=client -o yaml
