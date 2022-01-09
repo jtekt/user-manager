@@ -15,7 +15,7 @@ variables:
   CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
   CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
   CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
-  K8S_ECR_SECRET_NAME: ecr-credentials
+  K8S_ECR_SECRET: ecr-credentials
 
 
 build:
@@ -114,7 +114,7 @@ deploy:
     - master
   before_script:
     - >
-      kubectl create secret docker-registry ${K8S_ECR_SECRET_NAME}
+      kubectl create secret docker-registry ${K8S_ECR_SECRET}
       --docker-server=${ECR_URL}
       --docker-username=AWS
       --docker-password $(aws ecr get-login-password)

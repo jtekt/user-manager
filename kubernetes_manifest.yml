@@ -17,7 +17,8 @@ spec:
         image: ${CONTAINER_IMAGE_TAGGED}
         ports:
         - containerPort: 80
-        # Get environment variables from secret
+        imagePullSecrets:
+        - name: ${K8S_ECR_SECRET}
         envFrom:
         - secretRef:
            name: environment-variables
