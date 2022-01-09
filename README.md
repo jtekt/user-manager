@@ -12,7 +12,7 @@ A microservice to handle user information and authentication. Based on https://g
 | Route | Method | Query / body | Description |
 | --- | --- | --- | --- |
 | /v3/employees | GET | - | Gets a list of users |
-| /v3/employees | POST | {email_address, password}, password_confirm | Create a user (Admin only) |
+| /v3/employees | POST | email_address, password, password_confirm | Create a user (Admin only) |
 | /v3/employees/{Employee ID} | GET | - | Gets the information of an employee, here use 'self' as ID for one's own data |
 | /v3/employees/{Employee ID} | DELETE | - | Delete a user (admin only) |
 | /v3/employees/{Employee ID} | PATCH | properties | Updates information of an employee, here use 'self' as ID for one's own data |
