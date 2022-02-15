@@ -25,7 +25,7 @@ describe("/v3/users", () => {
   }
 
   before( async () => {
-    //console.log = function () {}
+    console.log = function () {}
     const {body} = await request(app)
       .post("/v3/auth/login")
       .send({username: TEST_USERNAME, password: TEST_PASSWORD})
