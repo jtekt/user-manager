@@ -177,6 +177,7 @@ exports.get_users = (req, res) => {
     exceptions: [ 'password_hashed' ],
     search,
     ids,
+    employee_numbers,
   }
 
   const session = driver.session()
