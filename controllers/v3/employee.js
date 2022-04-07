@@ -1,4 +1,5 @@
 const {drivers: {v2: driver}} = require('../../db.js')
+const createHttpError = require('http-errors')
 const dotenv = require('dotenv')
 const newUserSchema = require('../../schemas/newUser.js')
 const {
@@ -7,29 +8,26 @@ const {
   compare_password,
   user_query,
   user_id_filter,
-  error_handling,
-
 } = require('../../utils.js')
 
 dotenv.config()
 
 
-exports.create_user = async (req, res) => {
+exports.create_user = async (req, res, next) => {
 
 
   const session = driver.session()
 
   try {
 
-    if(!res.locals.user.isAdmin){
-      throw {code: 403, message: `Only administrators can create users`, tag: 'Auth'}
-    }
+    if(!res.locals.user.isAdmin) throw createHttpError(403, `Only administrators can create users`)
 
     const properties = req.body
     try {
       await newUserSchema.validateAsync(properties)
-    } catch (error) {
-      throw {code: 400, message: error}
+    }
+    catch (error) {
+      throw createHttpError(400, error)
     }
 
 
@@ -56,12 +54,12 @@ exports.create_user = async (req, res) => {
       RETURN properties(user) as user
       `
 
-    const params = { email_address, password_hashed, }
+    const params = { email_address, password_hashed }
 
     const {records} = await session.run(query,params)
 
     // No record implies that the user already existed
-    if(!records.length) throw {code: 400, message: `User already exists`, tag: 'Neo4J'}
+    if(!records.length) throw createHttpError(400, `User already exists`)
 
     const user = records[0].get('user')
     console.log(`[Neo4J] User ${user._id} created`)
@@ -72,7 +70,7 @@ exports.create_user = async (req, res) => {
 
   }
   catch (error) {
-    error_handling(error,res)
+    next(error)
   }
    finally {
     session.close()
@@ -82,7 +80,7 @@ exports.create_user = async (req, res) => {
 
 }
 
-exports.get_user = (req, res) => {
+exports.get_user = (req, res, next) => {
 
   // Route to retrieve an employee's data
 
@@ -90,7 +88,7 @@ exports.get_user = (req, res) => {
   // NOTE: Employee ID is NOT Employee number
   let {user_id} = req.params
   if(user_id === 'self') user_id = get_current_user_id(res)
-  if(!user_id) return res.status(400).send(`user_id not defined`)
+  if(!user_id) throw createHttpError(400, `user_id not defined`)
 
   // Forcing as string, hopefully just temporary
   // was needed for whereabouts
@@ -106,10 +104,7 @@ exports.get_user = (req, res) => {
   session.run(query, { user_id })
   .then( ({records}) => {
 
-    if(!records.length) {
-      console.log(`[Neo4J] User ${user_id} not found`)
-      return res.status(400).send(`User ${user_id} not found`)
-    }
+    if(!records.length) throw createHttpError(400, `User ${user_id} not found`)
 
     const user = records[0].get('user')
     delete user.password_hashed
@@ -118,14 +113,11 @@ exports.get_user = (req, res) => {
 
     console.log(`[Neo4J] Profile of user ${user_id} queried`)
   })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
-exports.get_users = (req, res) => {
+exports.get_users = (req, res, next) => {
   // Route to retrieve employees
 
   const {search, ids, employee_numbers} = req.query
@@ -197,14 +189,11 @@ exports.get_users = (req, res) => {
     res.send( employees )
     console.log(`[Neo4J] Users queried`)
    })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
-exports.patch_user = (req, res) => {
+exports.patch_user = (req, res, next) => {
 
   const current_user_id = get_current_user_id(res)
 
@@ -213,14 +202,11 @@ exports.patch_user = (req, res) => {
 
   const properties = req.body
 
-  if(!user_id) {
-    console.log(`Missing user_id`)
-    return res.status(400).send(`Missing user_id`)
-  }
+  if(!user_id) throw createHttpError(400, `Missing user_id`)
 
   // Prevent normal users to modify another user
   if(!res.locals.user.isAdmin && user_id != current_user_id){
-    return res.status(403).send(`Unauthorized to modify another user's data`)
+    throw createHttpError(403, `Unauthorized to modify another user's data`)
   }
 
   let customizable_fields = [
@@ -255,8 +241,7 @@ exports.patch_user = (req, res) => {
   // prevent user from modifying disallowed properties
   for (let [key, value] of Object.entries(properties)) {
     if(!customizable_fields.includes(key)){
-      console.log(`Attempt to modify forbidden key: ${key}`)
-      return res.status(403).send(`Not allowed to modify property ${key}`)
+      throw createHttpError(403, `Not allowed to modify property ${key}`)
     }
   }
 
@@ -275,15 +260,12 @@ exports.patch_user = (req, res) => {
   session.run(query, params)
   .then(({records}) => {
 
-    if(!records.length) {
-      console.log(`[Neo4J] User ${user_id} not found`)
-      return res.status(400).send(`User ${user_id} not found`)
-    }
+    if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
 
     res.send( records[0].get('user') )
     console.log(`User ${user_id} patched`)
   })
-  .catch(error => { error_handling(error,res)})
+  .catch(next)
   .finally( () => session.close())
 
 }
@@ -291,20 +273,14 @@ exports.patch_user = (req, res) => {
 
 
 
-exports.delete_user = (req, res) => {
+exports.delete_user = (req, res, next) => {
 
   // Prevent normal users to delete a user
-  if(!res.locals.user.isAdmin){
-    console.log(`Unauthorized to delete a user`)
-    return res.status(403).send(`Unauthorized to delete a user`)
-  }
+  if(!res.locals.user.isAdmin) throw createHttpError(403, `Unauthorized to delete users`)
 
   const {user_id} = req.params
 
-  if(!user_id) {
-    console.log(`user_id not defined`)
-    return res.status(400).send(`user_id not defined`)
-  }
+  if(!user_id) throw createHttpError(404, `User ID not defined`)
 
   const session = driver.session()
 
@@ -317,14 +293,48 @@ exports.delete_user = (req, res) => {
   session
   .run(query, {user_id })
   .then( ({records}) => {
-    if(!records.length) throw {code: 404, message: `User ${user_id} deletion failed`}
-    res.send({user_id})
+    if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
     console.log(`User ${user_id} deleted`)
+    res.send({user_id})
   })
-  .catch(error => { error_handling(error, res) })
+  .catch(next)
   .finally( () => session.close())
 
 
+}
+
+
+exports.get_employees_of_group = (req, res, next) => {
+  // Route to retrieve employees of a group
+  // Should not be done by this service
+
+  // Retrieve employee ID
+  let {group_id} = req.params
+
+  const session = driver.session()
+  session
+  .run(`
+    // Find the employee using the ID
+    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)
+    WHERE group._id = $group_id
+
+    with employee
+    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)-[:WORKS_IN]->(workplace:Workplace)
+
+    RETURN properties(employee) as employee,
+      collect(properties(group)) as groups,
+      collect(properties(workplace)) as workplaces
+    `, { group_id })
+  .then( ({records}) => {
+    const response = records.map(record => ({
+      ...record.get('employee'),
+      workplaces: record.get('workplaces'),
+      groups: record.get('groups'),
+    }))
+    res.send(response)
+  })
+  .catch(next)
+  .finally( () => { session.close() })
 }
 
 
@@ -369,52 +379,16 @@ const create_admin_if_not_exists = async () => {
     if(records.length) console.log(`[Neo4J] Admin creation: user ${admin_username} created`)
     else console.log(`[Neo4J] Admin creation: admin already existed`)
 
-
-
-  } catch (error) {
+  }
+  catch (error) {
     console.log(error)
     console.log(`[Neo4J] Admin creation failed, retrying in 10s...`)
     setTimeout(create_admin_if_not_exists,10000)
 
-  } finally {
+  }
+  finally {
     session.close()
   }
 
 }
 exports.create_admin_if_not_exists = create_admin_if_not_exists
-
-
-exports.get_employees_of_group = (req, res) => {
-  // Route to retrieve employees of a group
-
-  // Retrieve employee ID
-  let {group_id} = req.params
-
-  const session = driver.session()
-  session
-  .run(`
-    // Find the employee using the ID
-    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE group._id = $group_id
-
-    with employee
-    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)-[:WORKS_IN]->(workplace:Workplace)
-
-    RETURN properties(employee) as employee,
-      collect(properties(group)) as groups,
-      collect(properties(workplace)) as workplaces
-    `, { group_id })
-  .then( ({records}) => {
-    const response = records.map(record => ({
-      ...record.get('employee'),
-      workplaces: record.get('workplaces'),
-      groups: record.get('groups'),
-    }))
-    res.send(response)
-  })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
-  .finally( () => { session.close() })
-}

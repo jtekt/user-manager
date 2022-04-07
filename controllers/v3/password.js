@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt')
+const createHttpError = require('http-errors')
 const {drivers: {v2: driver}} = require('../../db.js')
 const {
   send_password_reset_email,
@@ -8,12 +9,11 @@ const {
   hash_password,
   compare_password,
   generate_token,
-  error_handling,
   user_query,
 } = require('../../utils.js')
 
 
-exports.update_password = async (req, res) => {
+exports.update_password = async (req, res, next) => {
 
 
 
@@ -21,28 +21,24 @@ exports.update_password = async (req, res) => {
 
   try {
 
-    // Input parsing
-    const {new_password, new_password_confirm} = req.body
-
-    if(!new_password) throw {code: 400, message: `New password missing`}
-    if(!new_password_confirm) throw {code: 400, message: `New password confirm missing`}
-    if(new_password !== new_password_confirm) throw {code: 400, message: `Password mismatch`}
-
     // Get current user ID
     const current_user_id = get_current_user_id(res)
     const user_is_admin = res.locals.user.isAdmin
 
-
-    // Retrieve user ID
+    // Input parsing
+    const {new_password, new_password_confirm} = req.body
     let {user_id} = req.params
     if(user_id === 'self') user_id = current_user_id
 
+    if(!user_id) throw createHttpError(400, `Missing user ID`)
+    if(!new_password) throw createHttpError(400, `New password missing`)
+    if(!new_password_confirm) throw createHttpError(400, `New password confirm missing`)
+    if(new_password !== new_password_confirm) throw createHttpError(400, `Password mismatch`)
 
-    if(!user_id)  throw {code: 400, message: `Missing user ID`}
 
     // Prevent an user from modifying another's password
     if(String(user_id) !== String(current_user_id) && !user_is_admin) {
-      throw {code: 403, message: `Unauthorized to modify another user's password`}
+      throw createHttpError(400, `Unauthorized to modify another user's password`)
     }
 
 
@@ -58,7 +54,7 @@ exports.update_password = async (req, res) => {
 
 
     const {records} = await session.run(query, { user_id, password_hashed })
-    if(!records.length) throw {code: 404, message: `Employee ${user_id} not found`}
+    if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
     // NEED TO REMOVE PASSWORD HASHED FROM RESPONSE
 
     res.send( records[0].get('user') )
@@ -66,7 +62,7 @@ exports.update_password = async (req, res) => {
 
   }
   catch (error) {
-    error_handling(error, res)
+    next(error)
   }
   finally {
     session.close()
@@ -74,7 +70,7 @@ exports.update_password = async (req, res) => {
 
 }
 
-exports.request_password_reset = async (req, res) => {
+exports.request_password_reset = async (req, res, next) => {
 
   const session = driver.session()
 
@@ -84,7 +80,7 @@ exports.request_password_reset = async (req, res) => {
 
   try {
     const {email_address} = req.body
-    if(!email_address) throw {code: 400, message: 'Missing email address'}
+    if(!email_address) throw createHttpError(400, `Missing email address`)
 
     const query = `
       MATCH (user:User)
@@ -92,7 +88,7 @@ exports.request_password_reset = async (req, res) => {
       RETURN properties(user) as user
       `
     const {records} = await session.run(query, { email_address })
-    if(!records.length) throw {code: 404, message: 'User not found'}
+    if(!records.length) throw createHttpError(400, `User not found`)
 
     const user = records[0].get('user')
 
@@ -102,8 +98,7 @@ exports.request_password_reset = async (req, res) => {
     res.send({email_address})
   }
   catch (error) {
-    error_handling(error, res)
-
+    next(error)
   }
   finally {
     session.close()

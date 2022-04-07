@@ -11,26 +11,27 @@
   "author": "Maxime MOREILLON",
   "license": "ISC",
   "dependencies": {
-    "@moreillon/authentication_middleware": "^1.0.7",
+    "@moreillon/authentication_middleware": "^1.0.9",
     "@moreillon/express_identification_middleware": "^1.1.0",
     "axios": "^0.24.0",
     "bcrypt": "^4.0.1",
     "connect-history-api-fallback": "^1.6.0",
     "cookie-session": "^1.4.0",
     "cors": "^2.8.5",
-    "dotenv": "^8.2.0",
-    "express": "^4.17.1",
-    "joi": "^17.5.0",
+    "dotenv": "^8.6.0",
+    "express": "^4.17.3",
+    "http-errors": "^2.0.0",
+    "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
-    "neo4j-driver": "^4.0.2",
-    "nodemailer": "^6.7.2",
+    "neo4j-driver": "^4.4.5",
+    "nodemailer": "^6.7.3",
     "prom-client": "^12.0.0",
-    "prometheus-api-metrics": "^3.1.0"
+    "prometheus-api-metrics": "^3.2.1"
   },
   "devDependencies": {
-    "chai": "^4.3.4",
-    "mocha": "^9.1.3",
+    "chai": "^4.3.6",
+    "mocha": "^9.2.2",
     "nyc": "^15.1.0",
-    "supertest": "^6.1.6"
+    "supertest": "^6.2.2"
   }
 }

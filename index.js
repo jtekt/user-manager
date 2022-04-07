@@ -54,6 +54,16 @@ app.use('/v1', router_v1)
 app.use('/v2', router_v2)
 app.use('/v3', router_v3)
 
+// Error handler
+app.use((error, req, res, next) => {
+  let status_code = error.code || 500
+  const message = error.message || error
+  if(isNaN(status_code)) status_code = 500
+  console.error(message)
+  res.status(status_code).send(message)
+})
+
+
 
 // Start the server
 app.listen(APP_PORT, () => console.log(`[Express] listening on port ${APP_PORT}`))

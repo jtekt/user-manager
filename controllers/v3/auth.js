@@ -1,4 +1,5 @@
 const Cookies = require('cookies')
+const createHttpError = require('http-errors')
 const {drivers: {v2: driver}} = require('../../db.js')
 const {
   decode_token,
@@ -50,7 +51,7 @@ const register_last_login = async (user) => {
 
 
 const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
-  // The error management here is quite bad
+  // The error handling here is quite bad
   const session = driver.session()
 
   const query = `
@@ -69,8 +70,8 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
   session.run(query, { identifier })
   .then( ({records}) => {
 
-    if(!records.length) return reject({code: 403, message: `User ${identifier} not found`, tag: 'Neo4J'})
-    if(records.length > 1) return reject({code: 500, message: `Multiple users identitfied as ${identifier} found`, tag: 'Neo4J'})
+    if(!records.length) return reject(createHttpError(403,`User ${identifier} not found`))
+    if(records.length > 1) return reject(createHttpError(500,`Multiple users identitfied as ${identifier} found`))
 
     const user = records[0].get('user')
 
@@ -78,7 +79,7 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
 
     resolve(user)
   })
-  .catch(error => { reject({code: 500, message:error}) })
+  .catch(error => { reject(createHttpError(500,error)) })
   .finally( () => session.close())
 
 })
@@ -121,7 +122,7 @@ exports.middleware = async (req, res, next) => {
 
 }
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
 
   try {
 
@@ -133,8 +134,8 @@ exports.login = async (req, res) => {
 
     const {password} = req.body
 
-    if(!identifier) throw {code: 400, message: `Missing username or e-mail address`}
-    if(!password) throw {code: 400, message: `Missing password`}
+    if(!identifier) throw createHttpError(400, `Missing username or e-mail address`)
+    if(!password) throw createHttpError(400, `Missing password`)
 
     console.log(`[Auth] Login attempt from user identified as ${identifier}`)
 
@@ -142,22 +143,22 @@ exports.login = async (req, res) => {
     const user = await find_user_in_db(identifier)
 
     // Lock check
-    if(user.locked) throw {code: 403, message: `This account is locked`}
+    if(user.locked) throw createHttpError(403, `Account is locked`)
 
     // Password check
     const password_correct = await compare_password(password, user.password_hashed)
-    if(!password_correct) throw {code: 403, message: `Incorrect password`}
+    if(!password_correct) throw createHttpError(403, `Incorrect password`)
 
     await register_last_login(user)
 
     const jwt = await generate_token(user)
 
-    res.send({jwt,user})
+    console.log(`[Auth] Successful login from user identified as ${identifier}`)
 
-    console.log(`[Auth v2] Successful login from user identified as ${identifier}`)
+    res.send({jwt,user})
   }
   catch (error) {
-    error_handling(error, res)
+    next(error)
   }
 
 }

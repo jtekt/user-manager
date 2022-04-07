@@ -104,8 +104,7 @@ test:
     # Pushing
     - docker push ${CONTAINER_IMAGE_TAGGED}
     - docker push ${CONTAINER_IMAGE_LATEST}
-    # Echoing image
-    - echo ${CONTAINER_IMAGE_TAGGED}
+
 
 
 
