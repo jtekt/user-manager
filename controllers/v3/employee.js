@@ -190,8 +190,8 @@ exports.get_users = (req, res, next) => {
     const employees = records.map(record => record.get('user'))
     employees.forEach( employee => { delete employee.password_hashed })
 
-    res.send( employees )
     console.log(`[Neo4J] Users queried`)
+    res.send( employees )
    })
   .catch(next)
   .finally( () => { session.close() })
@@ -210,7 +210,7 @@ exports.patch_user = (req, res, next) => {
   if(!user_id) throw createHttpError(400, `Missing user_id`)
 
   // Prevent normal users to modify another user
-  if(!user_is_admin && user_id != current_user_id){
+  if(!current_user_is_admin && user_id != current_user_id){
     throw createHttpError(403, `Unauthorized to modify another user's data`)
   }
 
