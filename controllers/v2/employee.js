@@ -204,7 +204,7 @@ exports.get_users = (req, res) => {
 exports.patch_user = (req, res) => {
 
   const current_user_id = get_current_user_id(res)
-  const user_is_admin = res.locals.user.properties.isAdmin
+  const current_user_is_admin = res.locals.user.properties.isAdmin
 
   let {user_id} = req.params
   if(user_id === 'self') user_id = current_user_id
@@ -221,7 +221,7 @@ exports.patch_user = (req, res) => {
     return res.status(403).send(`Unauthorized to modify another user's data`)
   }
 
-  const customizable_fields = current_user.isAdmin ? admin_editable_fields : user_editable_fields
+  const customizable_fields = current_user_is_admin ? admin_editable_fields : user_editable_fields
 
   // prevent user from modifying disallowed properties
   for (let [key, value] of Object.entries(properties)) {
