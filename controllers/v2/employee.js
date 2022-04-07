@@ -2,6 +2,10 @@ const {drivers: {v2: driver}} = require('../../db.js')
 const dotenv = require('dotenv')
 const newUserSchema = require('../../schemas/newUser.js')
 const {
+  user_editable_fields,
+  admin_editable_fields,
+} = require('../../schemas/editableUserFields.js')
+const {
   get_current_user_id,
   hash_password,
   compare_password,
@@ -200,6 +204,7 @@ exports.get_users = (req, res) => {
 exports.patch_user = (req, res) => {
 
   const current_user_id = get_current_user_id(res)
+  const user_is_admin = res.locals.user.properties.isAdmin
 
   let {user_id} = req.params
   if(user_id === 'self') user_id = current_user_id
@@ -212,38 +217,11 @@ exports.patch_user = (req, res) => {
   }
 
   // Prevent normal users to modify another user
-  if(!res.locals.user.properties.isAdmin && user_id != current_user_id){
+  if(!user_is_admin && user_id != current_user_id){
     return res.status(403).send(`Unauthorized to modify another user's data`)
   }
 
-  let customizable_fields = [
-    // Name related
-    'display_name',
-    'first_name',
-    'family_name',
-    'last_name', // Should not exist
-    'name_kanji',
-    'first_name_kanji',
-    'family_name_kanji',
-    'name_romaji',
-    'first_name_romaji',
-    'family_name_romaji',
-    'name_katakana',
-    'first_name_katakana',
-    'family_name_katakana',
-    'avatar_src',
-  ]
-
-  if(res.locals.user.properties.isAdmin) {
-    customizable_fields = [
-      ...customizable_fields,
-      'isAdmin',
-      'role',
-      'locked',
-      'employee_number',
-    ]
-  }
-
+  const customizable_fields = current_user.isAdmin ? admin_editable_fields : user_editable_fields
 
   // prevent user from modifying disallowed properties
   for (let [key, value] of Object.entries(properties)) {
