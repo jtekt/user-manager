@@ -38,7 +38,7 @@ exports.update_password = async (req, res, next) => {
 
     // Prevent an user from modifying another's password
     if(String(user_id) !== String(current_user_id) && !user_is_admin) {
-      throw createHttpError(400, `Unauthorized to modify another user's password`)
+      throw createHttpError(403, `Unauthorized to modify another user's password`)
     }
 
 

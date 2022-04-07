@@ -148,7 +148,7 @@ describe("/v3/users", () => {
       expect(status).to.equal(200)
     })
 
-    it("Should prevent update display name of others", async () => {
+    it("Should prevent the update of display_name of another user", async () => {
       const {status} = await request(app)
       .patch(`/v3/users/${admin_id}/`)
       .send({display_name: 'banana'})

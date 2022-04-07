@@ -61,7 +61,6 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
     WHERE user.email_address = $identifier
       OR user.username = $identifier
       OR user._id = $identifier
-      //OR id(user) = toInteger($identifier) // <= REMOVED!!
 
     // Return user if found
     RETURN properties(user) as user
