@@ -217,7 +217,7 @@ exports.patch_user = (req, res) => {
   }
 
   // Prevent normal users to modify another user
-  if(!user_is_admin && user_id != current_user_id){
+  if(!current_user_is_admin && user_id != current_user_id){
     return res.status(403).send(`Unauthorized to modify another user's data`)
   }
 
