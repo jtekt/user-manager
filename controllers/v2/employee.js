@@ -1,10 +1,5 @@
 const {drivers: {v2: driver}} = require('../../db.js')
 const dotenv = require('dotenv')
-const newUserSchema = require('../../schemas/newUser.js')
-const {
-  user_editable_fields,
-  admin_editable_fields,
-} = require('../../schemas/editableUserFields.js')
 const {
   get_current_user_id,
   hash_password,
@@ -135,65 +130,6 @@ exports.get_users = (req, res) => {
   })
   .finally( () => { session.close() })
 }
-
-exports.patch_user = (req, res) => {
-
-  const current_user_id = get_current_user_id(res)
-  const current_user_is_admin = res.locals.user.properties.isAdmin
-
-  let {user_id} = req.params
-  if(user_id === 'self') user_id = current_user_id
-
-  const properties = req.body
-
-  if(!user_id) {
-    console.log(`Missing user_id`)
-    return res.status(400).send(`Missing user_id`)
-  }
-
-  // Prevent normal users to modify another user
-  if(!current_user_is_admin && user_id != current_user_id){
-    return res.status(403).send(`Unauthorized to modify another user's data`)
-  }
-
-  const customizable_fields = current_user_is_admin ? admin_editable_fields : user_editable_fields
-
-  // prevent user from modifying disallowed properties
-  for (let [key, value] of Object.entries(properties)) {
-    if(!customizable_fields.includes(key)){
-      console.log(`Attempt to modify forbidden key: ${key}`)
-      return res.status(403).send(`Not allowed to modify property ${key}`)
-    }
-  }
-
-  const session = driver.session()
-
-  const query = `
-    ${user_query}
-
-    // += implies update of existing properties
-    SET user += $properties
-
-    RETURN user
-    `
-  const params = { user_id, properties }
-
-  session.run(query, params)
-  .then(({records}) => {
-
-    if(!records.length) {
-      console.log(`[Neo4J] User ${user_id} not found`)
-      return res.status(400).send(`User ${user_id} not found`)
-    }
-
-    res.send( records[0].get('user') )
-    console.log(`User ${user_id} patched`)
-  })
-  .catch(error => { error_handling(error,res)})
-  .finally( () => session.close())
-
-}
-
 
 
 const create_admin_if_not_exists = async () => {
