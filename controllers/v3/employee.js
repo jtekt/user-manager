@@ -169,6 +169,7 @@ exports.get_users = (req, res, next) => {
     ${search_query}
     ${ids_query}
 
+    WITH DISTINCT user as user
     RETURN properties(user) as user
 
     // TODO: BATCHING
