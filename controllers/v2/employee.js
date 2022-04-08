@@ -18,71 +18,6 @@ const {
 dotenv.config()
 
 
-exports.create_user = async (req, res) => {
-
-
-  const session = driver.session()
-
-  try {
-
-    if(!res.locals.user.properties.isAdmin){
-      throw {code: 403, message: `Only administrators can create users`, tag: 'Auth'}
-    }
-
-    const properties = req.body
-    try {
-      await newUserSchema.validateAsync(properties)
-    } catch (error) {
-      throw {code: 400, message: error}
-    }
-
-
-    const {
-      username,
-      password,
-      email_address,
-    } = properties
-
-    const password_hashed = await hash_password(password)
-
-    const query = `
-      // Merge with email_address as unique
-      MERGE (user:User:Employee {email_address: $email_address})
-
-      // if the user does not have a uuid, it means the user has not been registered
-      // if the user exists, then further execution will be stopped
-      WITH user
-      WHERE NOT EXISTS(user._id)
-      SET user._id = randomUUID() // THIS IS IMPORTANT
-      SET user.password_hashed = $password_hashed
-
-      // Return the account
-      RETURN user
-      `
-
-    const params = { email_address, password_hashed, }
-
-    const {records} = await session.run(query,params)
-
-    // No record implies that the user already existed
-    if(!records.length) throw {code: 400, message: `User already exists`, tag: 'Neo4J'}
-
-    const user = records[0].get('user')
-    console.log(`[Neo4J] User ${user.properties._id} created`)
-    res.send(user)
-
-
-  }
-  catch (error) {
-    error_handling(error,res)
-  }
-   finally {
-    session.close()
-  }
-
-
-
-}
 
 exports.get_user = (req, res) => {
 
@@ -259,44 +194,6 @@ exports.patch_user = (req, res) => {
 
 }
 
-
-
-
-exports.delete_user = (req, res) => {
-
-  // Prevent normal users to delete a user
-  if(!res.locals.user.properties.isAdmin){
-    console.log(`Unauthorized to delete a user`)
-    return res.status(403).send(`Unauthorized to delete a user`)
-  }
-
-  const {user_id} = req.params
-
-  if(!user_id) {
-    console.log(`user_id not defined`)
-    return res.status(400).send(`user_id not defined`)
-  }
-
-  const session = driver.session()
-
-  const query = `
-    ${user_query}
-    DETACH DELETE (user)
-    RETURN $user_id
-    `
-
-  session
-  .run(query, {user_id })
-  .then( ({records}) => {
-    if(!records.length) throw {code: 404, message: `User ${user_id} deletion failed`}
-    res.send({user_id})
-    console.log(`User ${user_id} deleted`)
-  })
-  .catch(error => { error_handling(error, res) })
-  .finally( () => session.close())
-
-
-}
 
 
 const create_admin_if_not_exists = async () => {
