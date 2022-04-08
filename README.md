@@ -1,6 +1,6 @@
 # Employees manager
 
-JTEKT employee data needs to be appropriately stored and managed. Moreover, employees are users of multiple applications, more and more of are built in-house. This generally requires a user management and authentication system. Instead of building such logic of every individual application, the service presented in this report leverages a microservice architecture to provide a centralized user management and authentication system which can be used by third party applications. Thanks to this approach, updating an employee information can be reflected instantly in all applications. In other words, this service can be used as single source of truth for employee information.
+Employee data needs to be appropriately stored and managed. Moreover, employees are users of multiple applications, more and more of are built in-house. This generally requires a user management and authentication system. Instead of building such logic of every individual application, the service presented in this report leverages a microservice architecture to provide a centralized user management and authentication system which can be used by third party applications. Thanks to this approach, updating an employee information can be reflected instantly in all applications. In other words, this service can be used as single source of truth for employee information.
 
 ## API
 
