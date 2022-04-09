@@ -3,18 +3,14 @@ const dotenv = require('dotenv')
 const {
   get_current_user_id,
   hash_password,
-  compare_password,
   user_query,
-  user_id_filter,
-  error_handling,
-
 } = require('../../utils.js')
 
 dotenv.config()
 
 
 
-exports.get_user = (req, res) => {
+exports.get_user = (req, res, next) => {
 
   // Route to retrieve an employee's data
 
@@ -45,14 +41,11 @@ exports.get_user = (req, res) => {
 
     console.log(`[Neo4J] Profile of user ${user_id} queried`)
   })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
-exports.get_users = (req, res) => {
+exports.get_users = (req, res,next) => {
   // Route to retrieve employees
 
   const {search, ids, employee_numbers} = req.query
@@ -124,10 +117,7 @@ exports.get_users = (req, res) => {
     res.send( employees )
     console.log(`[Neo4J] Users queried`)
    })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
@@ -188,7 +178,7 @@ const create_admin_if_not_exists = async () => {
 exports.create_admin_if_not_exists = create_admin_if_not_exists
 
 
-exports.get_employees_of_group = (req, res) => {
+exports.get_employees_of_group = (req, res, next) => {
   // Route to retrieve employees of a group
 
   // Retrieve employee ID
@@ -215,9 +205,6 @@ exports.get_employees_of_group = (req, res) => {
     }))
     res.send(response)
   })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }

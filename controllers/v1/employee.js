@@ -1,13 +1,6 @@
 const {drivers: {v1: driver}} = require('../../db.js')
 const {
-  user_editable_fields,
-  admin_editable_fields,
-} = require('../../schemas/editableUserFields.js')
-const {
   get_current_user_id,
-  hash_password,
-  compare_password,
-  generate_token,
   user_query
 } = require('../../utils.js')
 

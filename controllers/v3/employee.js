@@ -1,11 +1,11 @@
 const {drivers: {v2: driver}} = require('../../db.js')
 const createHttpError = require('http-errors')
 const dotenv = require('dotenv')
-const newUserSchema = require('../../schemas/newUser.js')
 const {
-  user_editable_fields,
-  admin_editable_fields,
-} = require('../../schemas/editableUserFields.js')
+  newUserSchema,
+  userUpdateSchema,
+  userAdminUpdateSchema
+} = require('../../schemas/users.js')
 const {
   get_current_user_id,
   hash_password,
@@ -33,7 +33,6 @@ exports.create_user = async (req, res, next) => {
     catch (error) {
       throw createHttpError(400, error)
     }
-
 
     const {
       username,
@@ -198,54 +197,55 @@ exports.get_users = (req, res, next) => {
   .finally( () => { session.close() })
 }
 
-exports.patch_user = (req, res, next) => {
+exports.patch_user = async (req, res, next) => {
 
-  const current_user_id = get_current_user_id(res)
-  const current_user_is_admin = res.locals.user.isAdmin
+  try {
+    const current_user_id = get_current_user_id(res)
+    const current_user_is_admin = res.locals.user.isAdmin
 
+    let {user_id} = req.params
+    if(user_id === 'self') user_id = current_user_id
+    if(!user_id) throw createHttpError(400, `Missing user_id`)
 
-  let {user_id} = req.params
-  if(user_id === 'self') user_id = current_user_id
-
-  const properties = req.body
-  if(!user_id) throw createHttpError(400, `Missing user_id`)
-
-  // Prevent normal users to modify another user
-  if(!current_user_is_admin && user_id != current_user_id){
-    throw createHttpError(403, `Unauthorized to modify another user's data`)
-  }
-
-  const customizable_fields = current_user_is_admin ? admin_editable_fields : user_editable_fields
-
-  // prevent user from modifying disallowed properties
-  for (const [key, value] of Object.entries(properties)) {
-    if(!customizable_fields.includes(key)){
-      throw createHttpError(403, `Not allowed to modify property ${key}`)
+    // Prevent normal users to modify another user
+    if(!current_user_is_admin && user_id != current_user_id){
+      throw createHttpError(403, `Unauthorized to modify another user's data`)
     }
-  }
 
-  const session = driver.session()
+    const properties = req.body
 
-  const query = `
-    ${user_query}
 
-    // += implies update of existing properties
-    SET user += $properties
+    try {
+      if(current_user_is_admin) await userAdminUpdateSchema.validateAsync(properties)
+      else await userUpdateSchema.validateAsync(properties)
+    }
+    catch (error) {
+      throw createHttpError(403, error)
+    }
 
-    RETURN user
-    `
-  const params = { user_id, properties }
+    const session = driver.session()
 
-  session.run(query, params)
-  .then(({records}) => {
+    const query = `
+      ${user_query}
+
+      // += implies update of existing properties
+      SET user += $properties
+
+      RETURN user
+      `
+    const params = { user_id, properties }
+
+    const {records} = await session.run(query, params)
 
     if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
 
     res.send( records[0].get('user') )
     console.log(`User ${user_id} patched`)
-  })
-  .catch(next)
-  .finally( () => session.close())
+
+  }
+  catch (error) {
+    next(error)
+  }
 
 }
 
