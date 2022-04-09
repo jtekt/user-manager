@@ -1,9 +1,8 @@
 const bcrypt = require('bcrypt')
 const createHttpError = require('http-errors')
-const {drivers: {v2: driver}} = require('../../db.js')
-const {
-  send_password_reset_email,
-} = require('../../mail.js')
+const { drivers: {v2: driver} } = require('../../db.js')
+const { passwordUpdateSchema } = require('../../schemas/passwords.js')
+const { send_password_reset_email } = require('../../mail.js')
 const {
   get_current_user_id,
   hash_password,
@@ -26,20 +25,24 @@ exports.update_password = async (req, res, next) => {
     const user_is_admin = res.locals.user.isAdmin
 
     // Input parsing
-    const {new_password, new_password_confirm} = req.body
     let {user_id} = req.params
+
     if(user_id === 'self') user_id = current_user_id
-
     if(!user_id) throw createHttpError(400, `Missing user ID`)
-    if(!new_password) throw createHttpError(400, `New password missing`)
-    if(!new_password_confirm) throw createHttpError(400, `New password confirm missing`)
-    if(new_password !== new_password_confirm) throw createHttpError(400, `Password mismatch`)
-
 
     // Prevent an user from modifying another's password
     if(String(user_id) !== String(current_user_id) && !user_is_admin) {
       throw createHttpError(403, `Unauthorized to modify another user's password`)
     }
+
+    try {
+      await passwordUpdateSchema.validateAsync(req.body)
+    }
+    catch (error) {
+      throw createHttpError(400, error.message)
+    }
+
+    const {new_password, new_password_confirm} = req.body
 
 
     const password_hashed = await hash_password(new_password)

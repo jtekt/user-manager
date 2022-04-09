@@ -123,11 +123,15 @@ exports.get_user = (req, res, next) => {
 exports.get_users = (req, res, next) => {
   // Route to retrieve employees
 
-  const {search, ids, employee_numbers} = req.query
+  const {
+    search,
+    ids,
+    employee_numbers,
+    batch_size = 100,
+    start_index = 0,
+  } = req.query
 
-  let search_query = ''
-  if(search) {
-    search_query = `
+  const search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
     WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
@@ -139,17 +143,14 @@ exports.get_users = (req, res, next) => {
     WITH key, user
     WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
-  }
 
-  let ids_query = ''
-  if(ids) {
-    search_query = `
+
+  const ids_query = `
     WITH user
     UNWIND $ids as id
     WITH id, user
     WHERE user._id = toString(id)
     `
-  }
 
   // specific to this app
   // UNUSED
@@ -165,33 +166,55 @@ exports.get_users = (req, res, next) => {
 
   const query = `
     MATCH (user:User)
-    ${search_query}
-    ${ids_query}
+    ${search ? search_query : ''}
+    ${ids ? ids_query : ''}
 
-    WITH DISTINCT user as user
-    RETURN properties(user) as user
+    // Aggregation
+    WITH
+      COLLECT(DISTINCT properties(user)) as users,
+      COUNT(DISTINCT user) as count,
+      toInteger($start_index) as start_index,
+      toInteger($batch_size) as batch_size,
+      (toInteger($start_index)+toInteger($batch_size)) as end_index
 
-    // TODO: BATCHING
+    // Batching
+    RETURN
+      count,
+      users[start_index..end_index] AS users,
+      start_index,
+      batch_size
 
-    LIMIT 200
+
     `
 
   const parameters = {
-    exceptions: [ 'password_hashed' ],
+    exceptions: [ 'password_hashed', '_id', 'avatar_src'],
     search,
     ids,
     employee_numbers,
+    start_index,
+    batch_size
   }
 
   const session = driver.session()
   session.run(query, parameters)
   .then(({records}) => {
 
-    const employees = records.map(record => record.get('user'))
-    employees.forEach( employee => { delete employee.password_hashed })
+    const record = records[0]
+    if(!record) throw createHttpError(404, `No user found`)
 
-    console.log(`[Neo4J] Users queried`)
-    res.send( employees )
+    const users = record.get('users')
+    users.forEach(user => { delete user.password_hashed })
+
+    const response =  {
+      batch_size: record.get('batch_size'),
+      start_index: record.get('start_index'),
+      count: record.get('count'),
+      users,
+    }
+    console.log(`[Neo4j] Users queried`)
+
+    res.send(response)
    })
   .catch(next)
   .finally( () => { session.close() })
