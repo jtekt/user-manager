@@ -64,7 +64,7 @@ exports.send_activation_email = async ({url,user}) => {
 exports.send_password_reset_email = async ({url,user}) => {
 
   try {
-    const {email_address} = user.properties
+    const {email_address} = user
     const token = await generate_token(user)
 
     console.log({token})

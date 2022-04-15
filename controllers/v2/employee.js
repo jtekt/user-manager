@@ -38,8 +38,6 @@ exports.get_user = (req, res, next) => {
     delete user.properties.password_hashed
 
     res.send(user)
-
-    console.log(`[Neo4J] Profile of user ${user_id} queried`)
   })
   .catch(next)
   .finally( () => { session.close() })
