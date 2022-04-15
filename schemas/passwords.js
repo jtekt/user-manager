@@ -1,14 +1,11 @@
 const Joi = require('joi');
 
-
-const password_regex = "/(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[$@$!#.])[A-Za-zd$@$!%*?&.]{8,20}/"
-
 const schema = Joi.object({
 
-  new_password: Joi
-    .string()
-    .regex(password_regex)
-    .required(),
+  new_password: Joi.string()
+      .min(6)
+      .pattern(new RegExp('^[a-zA-Z0-9]{3,30}$'))
+      .required(),
 
   new_password_confirm: Joi.ref('new_password'),
 
