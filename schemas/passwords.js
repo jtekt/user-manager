@@ -5,10 +5,10 @@ const password_regex = "/(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[$@$!#.])[A-Za-zd$@$!
 
 const schema = Joi.object({
 
-  new_password: Joi.string()
-      .min(6)
-      .pattern(RegExp(password_regex))
-      .required(),
+  new_password: Joi
+    .string()
+    .regex(password_regex)
+    .required(),
 
   new_password_confirm: Joi.ref('new_password'),
 
