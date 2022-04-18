@@ -9,7 +9,7 @@ const router_v2 = require('./routes/v2/index.js')
 const router_v3 = require('./routes/v3/index.js')
 
 // TODO: Use controller v3
-const { create_admin_if_not_exists } = require('./controllers/v2/employee.js')
+const { create_admin_if_not_exists } = require('./controllers/v3/employee.js')
 const { smtp } = require('./mail.js')
 const {
   url: neo4j_url,

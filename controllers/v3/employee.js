@@ -341,7 +341,7 @@ exports.get_employees_of_group = (req, res, next) => {
 
 const create_admin_if_not_exists = async () => {
 
-  console.log(`[Neo4J] Creating admin account`)
+  console.log(`[Neo4J] Creating admin account if necessary`)
 
   const session = driver.session()
 
@@ -357,28 +357,16 @@ const create_admin_if_not_exists = async () => {
     const query = `
       // Find the administrator account or create it if it does not exist
       MERGE (administrator:User {username:$admin_username})
-
-      // Make the administrator an actual administrator
-      SET administrator.isAdmin = true
-
-      // Check if the administrator account is missing its password
-      // If the administrator account does not have a password (newly created), set it
-      WITH administrator
-      WHERE NOT EXISTS(administrator.password_hashed)
-      SET administrator.password_hashed = $password_hashed
-
-      // Set some additional properties
-      SET administrator.display_name = 'Administrator'
-      SET administrator._id = randomUUID() // THIS IS IMPORTANT
+      ON CREATE SET administrator.isAdmin = true
+      ON CREATE SET administrator.password_hashed = $password_hashed
+      ON CREATE SET administrator.display_name = 'Administrator'
+      ON CREATE SET administrator._id = randomUUID()
 
       // Return the account
       RETURN administrator
       `
 
-    const {records} = await session.run(query, { admin_username, password_hashed })
-
-    if(records.length) console.log(`[Neo4J] Admin creation: user ${admin_username} created`)
-    else console.log(`[Neo4J] Admin creation: admin already existed`)
+    await session.run(query, { admin_username, password_hashed })
 
   }
   catch (error) {

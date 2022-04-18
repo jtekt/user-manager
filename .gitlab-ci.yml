@@ -10,13 +10,16 @@ services:
 
 variables:
   APPLICATION_NAME: employee-manager
+
   ECR_URL: 732469118990.dkr.ecr.ap-northeast-1.amazonaws.com
+
   CONTAINER_IMAGE: ${ECR_URL}/${APPLICATION_NAME}
+  CONTAINER_TAG: ${CI_COMMIT_SHORT_SHA}
   CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
   CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
-  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
+  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CONTAINER_TAG}
   CONTAINER_IMAGE_DOCKER_HUB_LATEST: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}:latest
-  CONTAINER_IMAGE_DOCKER_HUB_TAGGED: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}:${CI_COMMIT_SHORT_SHA}
+  CONTAINER_IMAGE_DOCKER_HUB_TAGGED: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}:${CONTAINER_TAG}
 
   K8S_ECR_SECRET: ecr-credentials
 
@@ -25,6 +28,8 @@ build:
   stage: build
   tags:
     - dind
+  only:
+    - master
   before_script:
     # Docker hub login
     # Should not be used anymore in the future
@@ -60,7 +65,8 @@ test:
   stage: test
   tags:
     - dind
-
+  only:
+    - master
   before_script:
     # Docker hub login
     - >
