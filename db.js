@@ -55,8 +55,8 @@ const create_admin_if_not_exists = async () => {
 
   try {
     const {
-      DEFAULT_ADMIN_USERNAME: admin_username = 'admin',
-      DEFAULT_ADMIN_PASSWORD: admin_password = 'admin',
+      DEFAULT_ADMIN_USERNAME: admin_username = 'administrator',
+      DEFAULT_ADMIN_PASSWORD: admin_password = 'administrator',
     } = process.env
 
 
