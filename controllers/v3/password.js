@@ -3,14 +3,11 @@ const createHttpError = require('http-errors')
 const { drivers: {v2: driver} } = require('../../db.js')
 const { passwordUpdateSchema } = require('../../schemas/passwords.js')
 const { send_password_reset_email } = require('../../mail.js')
+const { hash_password } = require('../../utils/passwords.js')
 const {
   get_current_user_id,
-  hash_password,
-  compare_password,
-  generate_token,
   user_query,
-} = require('../../utils.js')
-
+} = require('../../utils/users.js')
 
 exports.update_password = async (req, res, next) => {
 

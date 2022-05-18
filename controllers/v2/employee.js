@@ -2,9 +2,8 @@ const {drivers: {v2: driver}} = require('../../db.js')
 const dotenv = require('dotenv')
 const {
   get_current_user_id,
-  hash_password,
   user_query,
-} = require('../../utils.js')
+} = require('../../utils/users.js')
 
 dotenv.config()
 

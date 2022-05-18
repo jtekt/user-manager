@@ -1,6 +1,7 @@
-const {drivers: {v2: driver}} = require('../../db.js')
 const createHttpError = require('http-errors')
 const dotenv = require('dotenv')
+const {drivers: {v2: driver}} = require('../../db.js')
+const { hash_password } = require('../../utils/passwords.js')
 const {
   newUserSchema,
   userUpdateSchema,
@@ -8,11 +9,9 @@ const {
 } = require('../../schemas/users.js')
 const {
   get_current_user_id,
-  hash_password,
-  compare_password,
   user_query,
   user_id_filter,
-} = require('../../utils.js')
+} = require('../../utils/users.js')
 
 dotenv.config()
 
@@ -38,33 +37,35 @@ exports.create_user = async (req, res, next) => {
       username,
       password,
       email_address,
+      display_name,
     } = properties
 
     const password_hashed = await hash_password(password)
 
     const query = `
       // Merge with email_address as unique
-      MERGE (user:User:Employee {email_address: $email_address})
+      CREATE (user:User:Employee)
 
-      // if the user does not have a uuid, it means the user has not been registered
-      // if the user exists, then further execution will be stopped
-      WITH user
-      WHERE NOT EXISTS(user._id)
-      SET user._id = randomUUID() // THIS IS IMPORTANT
-      SET user.password_hashed = $password_hashed
+      SET user += $user_properties
+      SET user._id = randomUUID()
+      SET user.creation_date = date()
 
       // Return the account
       RETURN properties(user) as user
       `
+    
+    const user_properties = {
+      username,
+      email_address,
+      password_hashed,
+      display_name: display_name || username || email_address,
+    }
 
-    const params = { email_address, password_hashed }
-
-    const {records} = await session.run(query,params)
-
-    // No record implies that the user already existed
-    if(!records.length) throw createHttpError(400, `User already exists`)
+    const { records } = await session.run(query, {user_properties})
 
     const user = records[0].get('user')
+    delete user.password_hashed
+
     console.log(`[Neo4J] User ${user._id} created`)
 
 
@@ -100,9 +101,9 @@ exports.get_user = (req, res, next) => {
   const session = driver.session()
 
   const query = `
-  ${user_query}
-  RETURN properties(user) as user
-  `
+    ${user_query}
+    RETURN properties(user) as user
+    `
 
   session.run(query, { user_id })
   .then( ({records}) => {
@@ -338,46 +339,3 @@ exports.get_employees_of_group = (req, res, next) => {
   .finally( () => { session.close() })
 }
 
-
-const create_admin_if_not_exists = async () => {
-
-  console.log(`[Neo4J] Creating admin account if necessary`)
-
-  const session = driver.session()
-
-  try {
-    const {
-      DEFAULT_ADMIN_USERNAME: admin_username = 'administrator',
-      DEFAULT_ADMIN_PASSWORD: admin_password = 'administrator',
-    } = process.env
-
-
-    const password_hashed = await hash_password(admin_password)
-
-    const query = `
-      // Find the administrator account or create it if it does not exist
-      MERGE (administrator:User {username:$admin_username})
-      ON CREATE SET administrator.isAdmin = true
-      ON CREATE SET administrator.password_hashed = $password_hashed
-      ON CREATE SET administrator.display_name = 'Administrator'
-      ON CREATE SET administrator._id = randomUUID()
-
-      // Return the account
-      RETURN administrator
-      `
-
-    await session.run(query, { admin_username, password_hashed })
-
-  }
-  catch (error) {
-    console.log(error)
-    console.log(`[Neo4J] Admin creation failed, retrying in 10s...`)
-    setTimeout(create_admin_if_not_exists,10000)
-
-  }
-  finally {
-    session.close()
-  }
-
-}
-exports.create_admin_if_not_exists = create_admin_if_not_exists

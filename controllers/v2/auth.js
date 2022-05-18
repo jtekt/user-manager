@@ -1,52 +1,18 @@
-const Cookies = require('cookies')
 const {drivers: {v2: driver}} = require('../../db.js')
+const createHttpError = require('http-errors')
+const { compare_password } = require('../../utils/passwords.js')
 const {
+  register_last_login,
+  user_query
+} = require('../../utils/users.js')
+
+const { 
+  retrieve_jwt,
   decode_token,
   generate_token,
-  compare_password,
-  error_handling,
-  get_id_of_user,
-  user_query
-} = require('../../utils.js')
+} = require('../../utils/tokens.js')
 
 
-const retrieve_jwt = (req, res) => new Promise( (resolve, reject) => {
-
-  // Did not have to be a promise
-
-  const jwt = req.headers.authorization?.split(" ")[1]
-    || req.headers.authorization
-    || (new Cookies(req, res)).get('jwt')
-    || (new Cookies(req, res)).get('token')
-    || req.query.jwt
-    || req.query.token
-
-  if(!jwt) return reject(`JWT not provided`)
-
-  resolve(jwt)
-})
-
-const register_last_login = async (user) => {
-
-  const session = driver.session()
-
-  try {
-    const user_id = get_id_of_user(user)
-    const query = `
-      ${user_query}
-      SET user.last_login = date()
-      RETURN user
-      `
-    await session.run(query, {user_id})
-  }
-  catch (error) {
-    throw error
-  }
-  finally {
-    session.close()
-  }
-
-}
 
 
 const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
@@ -69,8 +35,8 @@ const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
   session.run(query, { identifier })
   .then( ({records}) => {
 
-    if(!records.length) return reject({code: 403, message: `User ${identifier} not found`, tag: 'Neo4J'})
-    if(records.length > 1) return reject({code: 500, message: `Multiple users identitfied as ${identifier} found`, tag: 'Neo4J'})
+    if (!records.length) return reject(createHttpError(403, `User ${identifier} not found`))
+    if (records.length > 1) return reject(createHttpError(500, `Multiple users identitfied as ${identifier} found`))
 
     const user = records[0].get('user')
 
@@ -119,7 +85,7 @@ exports.middleware = async (req, res, next) => {
 
 }
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
 
   try {
 
@@ -131,8 +97,8 @@ exports.login = async (req, res) => {
 
     const {password} = req.body
 
-    if(!identifier) throw {code: 400, message: `Missing username or e-mail address`}
-    if(!password) throw {code: 400, message: `Missing password`}
+    if (!identifier) throw createHttpError(400, `Missing username or e-mail address`)
+    if (!password) throw createHttpError(400, `Missing password`)
 
     console.log(`[Auth] Login attempt from user identified as ${identifier}`)
 
@@ -140,11 +106,12 @@ exports.login = async (req, res) => {
     const user = await find_user_in_db(identifier)
 
     // Lock check
-    if(user.properties.locked) throw {code: 403, message: `This account is locked`}
+    if (user.properties.locked) throw createHttpError(403, `Account is locked`)
 
     // Password check
     const password_correct = await compare_password(password, user.properties.password_hashed)
-    if(!password_correct) throw {code: 403, message: `Incorrect password`}
+    if (!password_correct) throw createHttpError(403, `Incorrect password`)
+
 
     await register_last_login(user)
 
@@ -155,7 +122,7 @@ exports.login = async (req, res) => {
     console.log(`[Auth v2] Successful login from user identified as ${identifier}`)
   }
   catch (error) {
-    error_handling(error, res)
+    next(error)
   }
 
 }

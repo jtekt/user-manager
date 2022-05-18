@@ -1,53 +1,18 @@
 const Cookies = require('cookies')
 const createHttpError = require('http-errors')
 const {drivers: {v2: driver}} = require('../../db.js')
+const { compare_password } = require('../../utils/passwords.js')
 const {
+  register_last_login,
+  user_query
+} = require('../../utils/users.js')
+const {
+  retrieve_jwt,
   decode_token,
   generate_token,
-  compare_password,
-  error_handling,
-  get_id_of_user,
-  user_query
-} = require('../../utils.js')
+} = require('../../utils/tokens.js')
 
 
-const retrieve_jwt = (req, res) => new Promise( (resolve, reject) => {
-
-  // Did not have to be a promise
-
-  const jwt = req.headers.authorization?.split(" ")[1]
-    || req.headers.authorization
-    || (new Cookies(req, res)).get('jwt')
-    || (new Cookies(req, res)).get('token')
-    || req.query.jwt
-    || req.query.token
-
-  if(!jwt) return reject(`JWT not provided`)
-
-  resolve(jwt)
-})
-
-const register_last_login = async (user) => {
-
-  const session = driver.session()
-
-  try {
-    const user_id = get_id_of_user(user)
-    const query = `
-      ${user_query}
-      SET user.last_login = date()
-      RETURN user.last_login as last_login
-      `
-    await session.run(query, {user_id})
-  }
-  catch (error) {
-    throw error
-  }
-  finally {
-    session.close()
-  }
-
-}
 
 
 const find_user_in_db = (identifier) => new Promise ( (resolve, reject) => {
@@ -146,7 +111,7 @@ exports.login = async (req, res, next) => {
 
     // Password check
     const password_correct = await compare_password(password, user.password_hashed)
-    if(!password_correct) throw createHttpError(403, `Incorrect password`)
+    if (!password_correct) throw createHttpError(403, `Incorrect password`)
 
     await register_last_login(user)
 

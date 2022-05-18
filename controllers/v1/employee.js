@@ -2,10 +2,10 @@ const {drivers: {v1: driver}} = require('../../db.js')
 const {
   get_current_user_id,
   user_query
-} = require('../../utils.js')
+} = require('../../utils/users.js')
 
 
-exports.get_employee = (req, res) => {
+exports.get_employee = (req, res, next) => {
   // Route to retrieve an employee's data
 
   // Retrieve employee ID
@@ -31,14 +31,11 @@ exports.get_employee = (req, res) => {
     res.send(records)
 
   })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
-exports.get_employees = (req, res) => {
+exports.get_employees = (req, res, next) => {
   // Route to retrieve employees
 
   let search_query = ''
@@ -91,9 +88,6 @@ exports.get_employees = (req, res) => {
     const employees = records.map(record => record.get('employee'))
     res.send( employees )
    })
-  .catch(error => {
-    console.error(error)
-    res.status(400).send(`Error accessing DB: ${error}`)
-  })
+  .catch(next)
   .finally( () => { session.close() })
 }
