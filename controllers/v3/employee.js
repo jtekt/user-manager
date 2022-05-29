@@ -10,7 +10,6 @@ const {
 const {
   get_current_user_id,
   user_query,
-  user_id_filter,
 } = require('../../utils/users.js')
 
 dotenv.config()

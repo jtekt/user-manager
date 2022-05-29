@@ -18,9 +18,8 @@ const newUserSchema = Joi.object({
 
 const user_update = {
   // Fields that can be edited by regular users
-  avatar_src: Joi.string().max(500),
-
-  website: Joi.string().max(500),
+  avatar_src: Joi.string().allow('').max(500),
+  website: Joi.string().allow('').max(500),
 
   // Naming
   display_name: Joi.string().min(2).max(100),
