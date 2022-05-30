@@ -155,7 +155,7 @@ exports.get_users = (req, res, next) => {
   // UNUSED
   let employee_numbers_query = ''
   if(employee_numbers) {
-    search_query = `
+    employee_numbers_query = `
     WITH user
     UNWIND $employee_numbers as employee_number
     WITH employee_number, user
@@ -182,8 +182,6 @@ exports.get_users = (req, res, next) => {
       users[start_index..end_index] AS users,
       start_index,
       batch_size
-
-
     `
 
   const parameters = {
@@ -194,6 +192,7 @@ exports.get_users = (req, res, next) => {
     start_index,
     batch_size
   }
+
 
   const session = driver.session()
   session.run(query, parameters)
@@ -211,6 +210,7 @@ exports.get_users = (req, res, next) => {
       count: record.get('count'),
       users,
     }
+
     console.log(`[Neo4j] Users queried`)
 
     res.send(response)
