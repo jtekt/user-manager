@@ -304,37 +304,3 @@ exports.delete_user = (req, res, next) => {
 
 }
 
-
-exports.get_employees_of_group = (req, res, next) => {
-  // Route to retrieve employees of a group
-  // Should not be done by this service
-
-  // Retrieve employee ID
-  let {group_id} = req.params
-
-  const session = driver.session()
-  session
-  .run(`
-    // Find the employee using the ID
-    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)
-    WHERE group._id = $group_id
-
-    with employee
-    MATCH (group:Group)<-[:BELONGS_TO]-(employee:Employee)-[:WORKS_IN]->(workplace:Workplace)
-
-    RETURN properties(employee) as employee,
-      collect(properties(group)) as groups,
-      collect(properties(workplace)) as workplaces
-    `, { group_id })
-  .then( ({records}) => {
-    const response = records.map(record => ({
-      ...record.get('employee'),
-      workplaces: record.get('workplaces'),
-      groups: record.get('groups'),
-    }))
-    res.send(response)
-  })
-  .catch(next)
-  .finally( () => { session.close() })
-}
-
