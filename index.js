@@ -13,7 +13,6 @@ const {
   url: neo4j_url,
   init: db_init,
   get_connected: get_neo4j_connected,
-  get_initialized: get_neo4j_initialized,
  } = require('./db.js')
 
 dotenv.config()
@@ -42,7 +41,6 @@ app.get('/', (req, res) => {
     neo4j: {
       url: neo4j_url,
       connected: get_neo4j_connected(),
-      initialized: get_neo4j_initialized(),
     },
     smtp,
   })

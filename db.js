@@ -21,7 +21,24 @@ const drivers = {
 const driver = drivers.v2 // alias
 
 let connected = false
-let initialized = false
+
+const get_connection_status = async () => {
+  const session = driver.session()
+  try {
+    console.log(`[Neo4J] Testing connection...`)
+    await session.run('RETURN 1')
+    console.log(`[Neo4J] Connection successful`)
+    return true
+  }
+  catch (e) {
+    console.log(`[Neo4J] Connection failed`)
+    return false
+  }
+  finally {
+    session.close()
+  }
+}
+
 
 const set_ids_to_nodes_without_ids = async () => {
   const id_setting_query = `
@@ -117,22 +134,28 @@ const create_constraints = async () => {
 }
 
 const init = async () => {
-  console.log('[Neo4J] Initializing DB')
 
 
-  try {
-    await create_admin_if_not_exists()
+
+  if (await get_connection_status()) {
     connected = true
-    await set_ids_to_nodes_without_ids()
-    await create_constraints()
-    initialized = true
-    console.error(`[Neo4J] DB initialized`)
-  } 
-  catch (error) {
-    console.error(error)
-    console.log(`[Neo4J] init failed, retrying in 10s`)
-    setTimeout(init,10000)
+
+    try {
+      console.log('[Neo4J] Initializing DB')
+      await create_admin_if_not_exists()
+      await set_ids_to_nodes_without_ids()
+      await create_constraints()
+      console.error(`[Neo4J] DB initialized`)
+
+    }
+    catch (error) {
+      console.log(error)
+    }
+  } else {
+    setTimeout(init, 10000)
   }
+
+
 
 
 }
@@ -141,5 +164,4 @@ exports.url = NEO4J_URL
 exports.drivers = drivers
 exports.driver = driver
 exports.get_connected = () => connected
-exports.get_initialized = () => initialized
 exports.init = init
