@@ -73,18 +73,6 @@ exports.get_users = (req, res,next) => {
     `
   }
 
-  // specific to this app
-  // UNUSED
-  let employee_numbers_query = ''
-  if(employee_numbers) {
-    search_query = `
-    WITH user
-    UNWIND $employee_numbers as employee_number
-    WITH employee_number, user
-    WHERE user.employee_number=employee_number
-    `
-  }
-
   const query = `
     MATCH (user:User)
     ${search_query}
