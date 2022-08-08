@@ -156,7 +156,7 @@ exports.get_users = (req, res, next) => {
     WITH user
     UNWIND $employee_numbers as employee_number
     WITH employee_number, user
-    WHERE user.employee_number = employee_number
+    WHERE user.employee_number = toString(employee_number)
     `
 
 
