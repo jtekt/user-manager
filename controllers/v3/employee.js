@@ -152,21 +152,19 @@ exports.get_users = (req, res, next) => {
     `
 
   // specific to this app
-  // UNUSED
-  let employee_numbers_query = ''
-  if(employee_numbers) {
-    employee_numbers_query = `
+  const employee_numbers_query = `
     WITH user
     UNWIND $employee_numbers as employee_number
     WITH employee_number, user
-    WHERE user.employee_number=employee_number
+    WHERE user.employee_number = employee_number
     `
-  }
+
 
   const query = `
     MATCH (user:User)
     ${search ? search_query : ''}
     ${ids ? ids_query : ''}
+    ${employee_numbers ? employee_numbers_query : ''}
 
     // Aggregation
     WITH
