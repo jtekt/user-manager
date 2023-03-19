@@ -1,43 +1,33 @@
-const createHttpError = require('http-errors')
-const dotenv = require('dotenv')
-const {drivers: {v2: driver}} = require('../../db.js')
-const { hash_password } = require('../../utils/passwords.js')
+const createHttpError = require("http-errors")
+const dotenv = require("dotenv")
+const { hash_password } = require("../../utils/passwords.js")
+const {
+  drivers: { v2: driver },
+} = require("../../db.js")
 const {
   newUserSchema,
   userUpdateSchema,
-  userAdminUpdateSchema
-} = require('../../schemas/users.js')
-const {
-  get_current_user_id,
-  user_query,
-} = require('../../utils/users.js')
+  userAdminUpdateSchema,
+} = require("../../schemas/users.js")
+const { get_current_user_id, user_query } = require("../../utils/users.js")
 
 dotenv.config()
 
-
 exports.create_user = async (req, res, next) => {
-
-
   const session = driver.session()
 
   try {
-
-    if(!res.locals.user.isAdmin) throw createHttpError(403, `Only administrators can create users`)
+    if (!res.locals.user.isAdmin)
+      throw createHttpError(403, `Only administrators can create users`)
 
     const properties = req.body
     try {
       await newUserSchema.validateAsync(properties)
-    }
-    catch (error) {
+    } catch (error) {
       throw createHttpError(400, error)
     }
 
-    const {
-      username,
-      password,
-      email_address,
-      display_name,
-    } = properties
+    const { username, password, email_address, display_name } = properties
 
     const password_hashed = await hash_password(password)
 
@@ -52,7 +42,7 @@ exports.create_user = async (req, res, next) => {
       // Return the account
       RETURN properties(user) as user
       `
-    
+
     const user_properties = {
       username,
       email_address,
@@ -60,38 +50,29 @@ exports.create_user = async (req, res, next) => {
       display_name: display_name || username || email_address,
     }
 
-    const { records } = await session.run(query, {user_properties})
+    const { records } = await session.run(query, { user_properties })
 
-    const user = records[0].get('user')
+    const user = records[0].get("user")
     delete user.password_hashed
 
     console.log(`[Neo4J] User ${user._id} created`)
 
-
     res.send(user)
-
-
-  }
-  catch (error) {
+  } catch (error) {
     next(error)
-  }
-   finally {
+  } finally {
     session.close()
   }
-
-
-
 }
 
 exports.get_user = (req, res, next) => {
-
   // Route to retrieve an employee's data
 
   // Retrieve employee ID
   // NOTE: Employee ID is NOT Employee number
-  let {user_id} = req.params
-  if(user_id === 'self') user_id = get_current_user_id(res)
-  if(!user_id) throw createHttpError(400, `user_id not defined`)
+  let { user_id } = req.params
+  if (user_id === "self") user_id = get_current_user_id(res)
+  if (!user_id) throw createHttpError(400, `user_id not defined`)
 
   // Forcing as string, hopefully just temporary
   // was needed for whereabouts
@@ -104,19 +85,21 @@ exports.get_user = (req, res, next) => {
     RETURN properties(user) as user
     `
 
-  session.run(query, { user_id })
-  .then( ({records}) => {
+  session
+    .run(query, { user_id })
+    .then(({ records }) => {
+      if (!records.length)
+        throw createHttpError(400, `User ${user_id} not found`)
 
-    if(!records.length) throw createHttpError(400, `User ${user_id} not found`)
+      const user = records[0].get("user")
+      delete user.password_hashed
 
-    const user = records[0].get('user')
-    delete user.password_hashed
-
-    res.send(user)
-
-  })
-  .catch(next)
-  .finally( () => { session.close() })
+      res.send(user)
+    })
+    .catch(next)
+    .finally(() => {
+      session.close()
+    })
 }
 
 exports.get_users = (req, res, next) => {
@@ -143,7 +126,6 @@ exports.get_users = (req, res, next) => {
     WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
 
-
   const ids_query = `
     WITH user
     UNWIND $ids as id
@@ -159,12 +141,11 @@ exports.get_users = (req, res, next) => {
     WHERE user.employee_number = toString(employee_number)
     `
 
-
   const query = `
     MATCH (user:User)
-    ${search ? search_query : ''}
-    ${ids ? ids_query : ''}
-    ${employee_numbers ? employee_numbers_query : ''}
+    ${search ? search_query : ""}
+    ${ids ? ids_query : ""}
+    ${employee_numbers ? employee_numbers_query : ""}
 
     // Aggregation
     WITH
@@ -183,63 +164,64 @@ exports.get_users = (req, res, next) => {
     `
 
   const parameters = {
-    exceptions: [ 'password_hashed', '_id', 'avatar_src'],
+    exceptions: ["password_hashed", "_id", "avatar_src"],
     search,
     ids,
     employee_numbers,
     start_index,
-    batch_size
+    batch_size,
   }
 
-
   const session = driver.session()
-  session.run(query, parameters)
-  .then(({records}) => {
+  session
+    .run(query, parameters)
+    .then(({ records }) => {
+      const record = records[0]
+      if (!record) throw createHttpError(404, `No user found`)
 
-    const record = records[0]
-    if(!record) throw createHttpError(404, `No user found`)
+      const users = record.get("users")
+      users.forEach((user) => {
+        delete user.password_hashed
+      })
 
-    const users = record.get('users')
-    users.forEach(user => { delete user.password_hashed })
+      const response = {
+        batch_size: record.get("batch_size"),
+        start_index: record.get("start_index"),
+        count: record.get("count"),
+        users,
+      }
 
-    const response =  {
-      batch_size: record.get('batch_size'),
-      start_index: record.get('start_index'),
-      count: record.get('count'),
-      users,
-    }
+      console.log(`[Neo4j] Users queried`)
 
-    console.log(`[Neo4j] Users queried`)
-
-    res.send(response)
-   })
-  .catch(next)
-  .finally( () => { session.close() })
+      res.send(response)
+    })
+    .catch(next)
+    .finally(() => {
+      session.close()
+    })
 }
 
 exports.patch_user = async (req, res, next) => {
-
   try {
     const current_user_id = get_current_user_id(res)
     const current_user_is_admin = res.locals.user.isAdmin
 
-    let {user_id} = req.params
-    if(user_id === 'self') user_id = current_user_id
-    if(!user_id) throw createHttpError(400, `Missing user_id`)
+    let { user_id } = req.params
+    if (user_id === "self") user_id = current_user_id
+    if (!user_id) throw createHttpError(400, `Missing user_id`)
 
     // Prevent normal users to modify another user
-    if(!current_user_is_admin && user_id != current_user_id){
+    if (!current_user_is_admin && user_id != current_user_id) {
       throw createHttpError(403, `Unauthorized to modify another user's data`)
     }
 
     const properties = req.body
 
-
     try {
-      if(current_user_is_admin) await userAdminUpdateSchema.validateAsync(properties)
+      if (current_user_is_admin)
+        await userAdminUpdateSchema.validateAsync(properties)
       else await userUpdateSchema.validateAsync(properties)
-    }
-    catch (error) {
+    } catch (error) {
       throw createHttpError(403, error)
     }
 
@@ -255,31 +237,25 @@ exports.patch_user = async (req, res, next) => {
       `
     const params = { user_id, properties }
 
-    const {records} = await session.run(query, params)
+    const { records } = await session.run(query, params)
 
-    if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
+    if (!records.length) throw createHttpError(404, `User ${user_id} not found`)
 
-    res.send( records[0].get('user') )
+    res.send(records[0].get("user"))
     console.log(`User ${user_id} patched`)
-
-  }
-  catch (error) {
+  } catch (error) {
     next(error)
   }
-
 }
 
-
-
-
 exports.delete_user = (req, res, next) => {
-
   // Prevent normal users to delete a user
-  if(!res.locals.user.isAdmin) throw createHttpError(403, `Unauthorized to delete users`)
+  if (!res.locals.user.isAdmin)
+    throw createHttpError(403, `Unauthorized to delete users`)
 
-  const {user_id} = req.params
+  const { user_id } = req.params
 
-  if(!user_id) throw createHttpError(404, `User ID not defined`)
+  if (!user_id) throw createHttpError(404, `User ID not defined`)
 
   const session = driver.session()
 
@@ -290,15 +266,13 @@ exports.delete_user = (req, res, next) => {
     `
 
   session
-  .run(query, {user_id })
-  .then( ({records}) => {
-    if(!records.length) throw createHttpError(404, `User ${user_id} not found`)
-    console.log(`User ${user_id} deleted`)
-    res.send({user_id})
-  })
-  .catch(next)
-  .finally( () => session.close())
-
-
+    .run(query, { user_id })
+    .then(({ records }) => {
+      if (!records.length)
+        throw createHttpError(404, `User ${user_id} not found`)
+      console.log(`User ${user_id} deleted`)
+      res.send({ user_id })
+    })
+    .catch(next)
+    .finally(() => session.close())
 }
-
