@@ -9,6 +9,8 @@ const router_v2 = require("./routes/v2/index.js")
 const router_v3 = require("./routes/v3/index.js")
 
 const { smtp } = require("./mail.js")
+const { hostname: ldapHostname } = require("./ldap")
+
 const {
   url: neo4j_url,
   init: db_init,
@@ -42,12 +44,14 @@ app.get("/", (req, res) => {
       connected: get_neo4j_connected(),
     },
     smtp,
+    ldap: {
+      hostname: ldapHostname,
+    },
   })
 })
 
 app.use("/", router_v1)
 app.use("/v1", router_v1)
-
 app.use("/v2", router_v2)
 app.use("/v3", router_v3)
 

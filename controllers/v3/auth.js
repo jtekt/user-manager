@@ -1,10 +1,11 @@
-const Cookies = require("cookies")
 const createHttpError = require("http-errors")
+const { compare_password } = require("../../utils/passwords.js")
+const { register_last_login, user_query } = require("../../utils/users.js")
+const { authenticateWithLdap, hostname: ldapHostname } = require("../../ldap")
+
 const {
   drivers: { v2: driver },
 } = require("../../db.js")
-const { compare_password } = require("../../utils/passwords.js")
-const { register_last_login, user_query } = require("../../utils/users.js")
 const {
   retrieve_jwt,
   decode_token,
@@ -103,8 +104,16 @@ exports.login = async (req, res, next) => {
     if (locked) throw createHttpError(403, `Account is locked`)
 
     // Password check
-    // TODO: LDAP authentication
-    const password_correct = await compare_password(password, password_hashed)
+
+    let password_correct = await compare_password(password, password_hashed)
+
+    // Fallback to LDAP if available
+    if (!password_correct && ldapHostname)
+      password_correct = await authenticateWithLdap(
+        user.email_address,
+        password
+      )
+
     if (!password_correct) throw createHttpError(403, `Incorrect password`)
 
     await register_last_login(user)
