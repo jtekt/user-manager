@@ -17,15 +17,15 @@ const {
 
 dotenv.config()
 
-console.log(`= Employee manager v${version} =`)
+console.log(`= Account manager v${version} =`)
 
 db_init()
 
 // Express port
-const { APP_PORT = 80 } = process.env
+const { APP_PORT = 80, TZ } = process.env
 
 // Time zone
-process.env.TZ = process.env.TZ || "Asia/Tokyo"
+process.env.TZ = TZ || "Asia/Tokyo"
 
 const app = express()
 app.use(express.json())

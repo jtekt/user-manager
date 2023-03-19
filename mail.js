@@ -29,9 +29,6 @@ const send_email = (email) =>
     })
   })
 
-exports.trasnporter = transporter
-exports.options = options
-
 exports.send_activation_email = async ({ url, user }) => {
   try {
     const { email_address } = user
@@ -72,6 +69,8 @@ exports.send_password_reset_email = async ({ url, user }) => {
   }
 }
 
+exports.trasnporter = transporter
+exports.options = options
 exports.smtp = {
   host: options.host,
   port: options.port,
