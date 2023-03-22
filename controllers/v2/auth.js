@@ -118,7 +118,7 @@ exports.login = async (req, res, next) => {
     // Fallback to LDAP if available
     if (!password_correct && ldapHostname)
       password_correct = await authenticateWithLdap(
-        user.email_address,
+        user.properties.email_address,
         password
       )
 
