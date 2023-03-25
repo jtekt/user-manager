@@ -65,6 +65,113 @@ exports.create_user = async (req, res, next) => {
   }
 }
 
+exports.get_users = (req, res, next) => {
+  const {
+    search,
+    ids,
+    employee_numbers,
+    batch_size = 100,
+    start_index = 0,
+    ...filters
+  } = req.query
+
+  const search_query = `
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
+
+    // Unwinding
+    UNWIND keys as key
+
+    // Filter nodes by looking for properties
+    WITH key, user
+    WHERE toLower(toString(user[key])) CONTAINS toLower($search)
+    `
+
+  const filtering_query = `
+    WITH user
+    UNWIND KEYS($filters) as filterKey
+    WITH user
+    WHERE user[filterKey] = $filters[filterKey]
+    `
+
+  const ids_query = `
+    WITH user
+    UNWIND $ids as id
+    WITH id, user
+    WHERE user._id = toString(id)
+    `
+
+  // specific to this app
+  const employee_numbers_query = `
+    WITH user
+    UNWIND $employee_numbers as employee_number
+    WITH employee_number, user
+    WHERE user.employee_number = toString(employee_number)
+    `
+
+  const query = `
+    MATCH (user:User)
+    ${search ? search_query : ""}
+    ${Object.keys(filters).length ? filtering_query : ""}
+    ${ids ? ids_query : ""}
+    ${employee_numbers ? employee_numbers_query : ""}
+
+    // Aggregation
+    WITH
+      COLLECT(DISTINCT properties(user)) as users,
+      COUNT(DISTINCT user) as count,
+      toInteger($start_index) as start_index,
+      toInteger($batch_size) as batch_size,
+      (toInteger($start_index)+toInteger($batch_size)) as end_index
+
+    // Batching
+    RETURN
+      count,
+      users[start_index..end_index] AS users,
+      start_index,
+      batch_size
+    `
+
+  const parameters = {
+    exceptions: ["password_hashed", "_id", "avatar_src"],
+    search,
+    ids,
+    employee_numbers,
+    start_index,
+    batch_size,
+    filters,
+  }
+
+  const session = driver.session()
+  session
+    .run(query, parameters)
+    .then(({ records }) => {
+      const record = records[0]
+      if (!record) throw createHttpError(404, `No user found`)
+
+      const users = record.get("users")
+      users.forEach((user) => {
+        delete user.password_hashed
+      })
+
+      const response = {
+        batch_size: record.get("batch_size"),
+        start_index: record.get("start_index"),
+        count: record.get("count"),
+        users,
+      }
+
+      console.log(`[Neo4j] Users queried`)
+
+      res.send(response)
+    })
+    .catch(next)
+    .finally(() => {
+      session.close()
+    })
+}
+
 exports.get_user = (req, res, next) => {
   // Route to retrieve an employee's data
 
@@ -95,105 +202,6 @@ exports.get_user = (req, res, next) => {
       delete user.password_hashed
 
       res.send(user)
-    })
-    .catch(next)
-    .finally(() => {
-      session.close()
-    })
-}
-
-exports.get_users = (req, res, next) => {
-  // Route to retrieve employees
-
-  const {
-    search,
-    ids,
-    employee_numbers,
-    batch_size = 100,
-    start_index = 0,
-  } = req.query
-
-  const search_query = `
-    // Make a list of the keys of each node
-    // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
-
-    // Unwinding
-    UNWIND keys as key
-
-    // Filter nodes by looking for properties
-    WITH key, user
-    WHERE toLower(toString(user[key])) CONTAINS toLower($search)
-    `
-
-  const ids_query = `
-    WITH user
-    UNWIND $ids as id
-    WITH id, user
-    WHERE user._id = toString(id)
-    `
-
-  // specific to this app
-  const employee_numbers_query = `
-    WITH user
-    UNWIND $employee_numbers as employee_number
-    WITH employee_number, user
-    WHERE user.employee_number = toString(employee_number)
-    `
-
-  const query = `
-    MATCH (user:User)
-    ${search ? search_query : ""}
-    ${ids ? ids_query : ""}
-    ${employee_numbers ? employee_numbers_query : ""}
-
-    // Aggregation
-    WITH
-      COLLECT(DISTINCT properties(user)) as users,
-      COUNT(DISTINCT user) as count,
-      toInteger($start_index) as start_index,
-      toInteger($batch_size) as batch_size,
-      (toInteger($start_index)+toInteger($batch_size)) as end_index
-
-    // Batching
-    RETURN
-      count,
-      users[start_index..end_index] AS users,
-      start_index,
-      batch_size
-    `
-
-  const parameters = {
-    exceptions: ["password_hashed", "_id", "avatar_src"],
-    search,
-    ids,
-    employee_numbers,
-    start_index,
-    batch_size,
-  }
-
-  const session = driver.session()
-  session
-    .run(query, parameters)
-    .then(({ records }) => {
-      const record = records[0]
-      if (!record) throw createHttpError(404, `No user found`)
-
-      const users = record.get("users")
-      users.forEach((user) => {
-        delete user.password_hashed
-      })
-
-      const response = {
-        batch_size: record.get("batch_size"),
-        start_index: record.get("start_index"),
-        count: record.get("count"),
-        users,
-      }
-
-      console.log(`[Neo4j] Users queried`)
-
-      res.send(response)
     })
     .catch(next)
     .finally(() => {
