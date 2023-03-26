@@ -69,7 +69,7 @@ exports.get_users = (req, res, next) => {
   const {
     search,
     ids,
-    employee_numbers,
+    employee_numbers, // TODO: this is specific to this company
     batch_size = 100,
     start_index = 0,
     ...filters
