@@ -78,40 +78,46 @@ exports.get_users = (req, res, next) => {
   const search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
+    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys
 
     // Unwinding
     UNWIND keys as key
 
     // Filter nodes by looking for properties
-    WITH key, user
+    WITH key
+    // NOTE: This overrides previous MATCH
+    OPTIONAL MATCH (user:User)
     WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
 
   const filtering_query = `
-    WITH user
     UNWIND KEYS($filters) as filterKey
-    WITH user
+    // This WITH is needed to isolate from previous MATCH
+    WITH filterKey
+    // NOTE: This overrides previous MATCH
+    OPTIONAL MATCH (user:User)
     WHERE user[filterKey] = $filters[filterKey]
-    `
+      `
 
   const ids_query = `
-    WITH user
     UNWIND $ids as id
-    WITH id, user
-    WHERE user._id = toString(id)
+    // This WITH is needed to isolate from previous MATCH
+    WITH id
+    // NOTE: This overrides previous MATCH
+    OPTIONAL MATCH (user:User {_id: id})
     `
 
   // specific to this app
   const employee_numbers_query = `
-    WITH user
     UNWIND $employee_numbers as employee_number
-    WITH employee_number, user
-    WHERE user.employee_number = toString(employee_number)
+    // This WITH is needed to isolate from previous MATCH
+    WITH employee_number
+    // NOTE: This overrides previous MATCH
+    OPTIONAL MATCH (user:User {employee_number: toString(employee_number)})
     `
 
   const query = `
-    MATCH (user:User)
+    OPTIONAL MATCH (user:User)
     ${search ? search_query : ""}
     ${Object.keys(filters).length ? filtering_query : ""}
     ${ids ? ids_query : ""}
