@@ -78,15 +78,16 @@ exports.get_users = (req, res, next) => {
   const search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys
+    // NOTE: Exceptions are slow so changed to inclusions
+    // WITH user, [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys
+    WITH [key IN $searchableKeys] AS keys, user
 
     // Unwinding
     UNWIND keys as key
 
     // Filter nodes by looking for properties
-    WITH key
-    // NOTE: This overrides previous MATCH
-    OPTIONAL MATCH (user:User)
+    WITH key, user
+
     WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
 
@@ -139,8 +140,16 @@ exports.get_users = (req, res, next) => {
       batch_size
     `
 
+  const searchableKeys = [
+    "email_address",
+    "display_name",
+    "_id",
+    "employee_number",
+  ]
+
   const parameters = {
-    exceptions: ["password_hashed", "_id", "avatar_src"],
+    exceptions: ["password_hashed", "_id", "avatar_src", "active"],
+    searchableKeys,
     search,
     ids,
     employee_numbers,
@@ -167,8 +176,6 @@ exports.get_users = (req, res, next) => {
         count: record.get("count"),
         users,
       }
-
-      console.log(`[Neo4j] Users queried`)
 
       res.send(response)
     })

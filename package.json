@@ -1,9 +1,10 @@
 {
   "name": "account_manager",
-  "version": "5.3.2",
+  "version": "5.3.3",
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon index.js",
     "test": "mocha --timeout 10000 --exit",
     "coverage": "nyc mocha --timeout 15000 --exit"
   },
