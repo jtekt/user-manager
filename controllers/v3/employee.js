@@ -250,12 +250,9 @@ exports.patch_user = async (req, res, next) => {
 
     const query = `
       ${user_query}
-
-      // += implies update of existing properties
       SET user += $properties
+      RETURN user`
 
-      RETURN user
-      `
     const params = { user_id, properties }
 
     const { records } = await session.run(query, params)
@@ -283,8 +280,7 @@ exports.delete_user = (req, res, next) => {
   const query = `
     ${user_query}
     DETACH DELETE (user)
-    RETURN $user_id as user_id
-    `
+    RETURN $user_id as user_id`
 
   session
     .run(query, { user_id })
