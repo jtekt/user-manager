@@ -13,7 +13,7 @@ const { TEST_USERNAME = "administrator", TEST_PASSWORD = "administrator" } =
 describe("/v2/auth", () => {
   before(async () => {
     //console.log = function () {}
-    await sleep(8000) // wait for admin account to create (DIRTY)
+    await sleep(30000) // wait for admin account to create (DIRTY)
   })
 
   // We will test root GET related logics
