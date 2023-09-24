@@ -39,7 +39,7 @@ const get_connection_status = async () => {
 const set_ids_to_nodes_without_ids = async () => {
   const id_setting_query = `
   MATCH (u:User)
-  WHERE u._id IS NOT NULL
+  WHERE u._id IS NULL
   SET u._id = toString(id(u))
   RETURN COUNT(u) as count
   `
@@ -78,7 +78,7 @@ const create_admin_if_not_exists = async () => {
       // Check if the administrator account is missing its password
       // If the administrator account does not have a password (newly created), set it
       WITH administrator
-      WHERE administrator.password_hashed IS NOT NULL
+      WHERE administrator.password_hashed IS NULL
       SET administrator.password_hashed = $password_hashed
       SET administrator._id = randomUUID() // THIS IS IMPORTANT
       SET administrator.isAdmin = true
