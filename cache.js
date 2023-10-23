@@ -1,6 +1,6 @@
 const { createClient } = require("redis")
 
-const { REDIS_URL = "redis://redis" } = process.env
+const { REDIS_URL } = process.env
 
 let client
 
