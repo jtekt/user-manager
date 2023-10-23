@@ -60,16 +60,16 @@ exports.middleware = async (req, res, next) => {
   try {
     const token = await retrieve_jwt(req, res)
     const { user_id } = await decode_token(token)
-
-    let user = await getUserFromCache(user_id)
-    if (user) {
-      res.locals.user = user
-      next()
-      return
-    }
   } catch (error) {
     console.error(error)
     res.status(403).send(error)
+    return
+  }
+
+  let user = await getUserFromCache(user_id)
+  if (user) {
+    res.locals.user = user
+    next()
     return
   }
 
