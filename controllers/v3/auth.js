@@ -66,8 +66,6 @@ exports.middleware = async (req, res, next) => {
     let user = await getUserFromCache(user_id)
 
     if (!user) {
-      console.log(`[Cache] user ${user_id} not found in cache`)
-
       const query = `
       ${user_query}
       RETURN properties(user) as user

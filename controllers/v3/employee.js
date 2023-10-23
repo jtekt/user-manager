@@ -10,7 +10,12 @@ const {
   userAdminUpdateSchema,
 } = require("../../schemas/users.js")
 const { get_current_user_id, user_query } = require("../../utils/users.js")
-const { getCache, getUserFromCache, setUserInCache } = require("../../cache.js")
+const {
+  getCache,
+  getUserFromCache,
+  setUserInCache,
+  removeUserFromCache,
+} = require("../../cache.js")
 
 dotenv.config()
 
@@ -188,15 +193,9 @@ exports.get_users = (req, res, next) => {
 
 exports.get_user = async (req, res, next) => {
   // Route to retrieve an employee's data
-
-  // Retrieve employee ID
   // NOTE: Employee ID is NOT Employee number
-
   let { user_id } = req.params
-  if (user_id === "self") {
-    console.log(`User looking himself up, serving res.locals.user`)
-    return res.send(res.locals.user)
-  }
+  if (user_id === "self") return res.send(res.locals.user)
   if (!user_id) throw createHttpError(400, `user_id not defined`)
 
   // Forcing as string, hopefully just temporary
@@ -274,6 +273,8 @@ exports.patch_user = async (req, res, next) => {
 
     const user = records[0].get("user")
 
+    removeUserFromCache(user_id)
+
     res.send(user)
     console.log(`User ${user_id} patched`)
   } catch (error) {
@@ -303,6 +304,7 @@ exports.delete_user = (req, res, next) => {
       if (!records.length)
         throw createHttpError(404, `User ${user_id} not found`)
       console.log(`User ${user_id} deleted`)
+      removeUserFromCache(user_id)
       res.send({ user_id })
     })
     .catch(next)
