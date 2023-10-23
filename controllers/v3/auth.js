@@ -57,14 +57,8 @@ const find_user_in_db = (identifier) =>
   })
 
 exports.middleware = async (req, res, next) => {
-  try {
-    const token = await retrieve_jwt(req, res)
-    const { user_id } = await decode_token(token)
-  } catch (error) {
-    console.error(error)
-    res.status(403).send(error)
-    return
-  }
+  const token = await retrieve_jwt(req, res)
+  const { user_id } = await decode_token(token)
 
   let user = await getUserFromCache(user_id)
   if (user) {
