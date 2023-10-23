@@ -146,7 +146,7 @@ exports.login = async (req, res, next) => {
       `[Auth] Successful login from user identified as ${userIdentifier}`
     )
 
-    removeUserFromCache()
+    removeUserFromCache(user._id)
 
     res.send({ jwt, user })
   } catch (error) {
