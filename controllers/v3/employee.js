@@ -11,7 +11,6 @@ const {
 } = require("../../schemas/users.js")
 const { get_current_user_id, user_query } = require("../../utils/users.js")
 const {
-  getCache,
   getUserFromCache,
   setUserInCache,
   removeUserFromCache,

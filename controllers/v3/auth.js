@@ -94,8 +94,8 @@ exports.middleware = async (req, res, next) => {
       throw `Multiple users with ID ${user_id} found in the database`
 
     user = records[0].get("user")
-    user.cached = false
     await setUserInCache(user)
+    user.cached = false
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user
