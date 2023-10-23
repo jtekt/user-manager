@@ -11,7 +11,7 @@ const {
   decode_token,
   generate_token,
 } = require("../../utils/tokens.js")
-const { getCache, getUserFromCache, setUserInCache } = require("../../cache.js")
+const { getUserFromCache, setUserInCache } = require("../../cache.js")
 
 const find_user_in_db = (identifier) =>
   new Promise((resolve, reject) => {
@@ -57,30 +57,33 @@ const find_user_in_db = (identifier) =>
   })
 
 exports.middleware = async (req, res, next) => {
+  let user = await getUserFromCache(user_id)
+  if (user) {
+    res.locals.user = user
+    next()
+    return
+  }
+
   const session = driver.session()
 
   try {
     const token = await retrieve_jwt(req, res)
     const { user_id } = await decode_token(token)
 
-    let user = await getUserFromCache(user_id)
-
-    if (!user) {
-      const query = `
+    const query = `
       ${user_query}
       RETURN properties(user) as user
       `
-      const params = { user_id: user_id.toString() } // Forcing string
-      const { records } = await session.run(query, params)
+    const params = { user_id: user_id.toString() } // Forcing string
+    const { records } = await session.run(query, params)
 
-      if (!records.length) throw `User ${user_id} not found in the database`
-      if (records.length > 1)
-        throw `Multiple users with ID ${user_id} found in the database`
+    if (!records.length) throw `User ${user_id} not found in the database`
+    if (records.length > 1)
+      throw `Multiple users with ID ${user_id} found in the database`
 
-      user = records[0].get("user")
-      user.cached = false
-      await setUserInCache(user)
-    }
+    user = records[0].get("user")
+    user.cached = false
+    await setUserInCache(user)
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user
