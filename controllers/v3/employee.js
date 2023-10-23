@@ -168,7 +168,7 @@ exports.get_users = (req, res, next) => {
     .run(query, parameters)
     .then(({ records }) => {
       const record = records[0]
-      if (!record) throw createHttpError(404, `No user found`)
+      if (!record) throw createHttpError(404, `No record found`)
 
       const users = record.get("users")
       users.forEach((user) => {
@@ -222,7 +222,6 @@ exports.get_user = async (req, res, next) => {
     user = records[0].get("user")
     setUserInCache(user)
     user.cached = false
-
     delete user.password_hashed
 
     res.send(user)

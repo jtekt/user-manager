@@ -19,8 +19,6 @@ exports.init = async () => {
   await client.connect()
 }
 
-exports.getCache = () => client
-
 exports.getUserFromCache = async (user_id) => {
   if (!client) return
   const userFromCache = await client.get(`user:${user_id}`)
@@ -39,3 +37,5 @@ exports.removeUserFromCache = async (user_id) => {
   if (!client) return
   await client.del(`user:${user_id}`)
 }
+
+exports.REDIS_URL = REDIS_URL

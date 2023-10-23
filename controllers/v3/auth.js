@@ -126,7 +126,6 @@ exports.login = async (req, res, next) => {
     if (locked) throw createHttpError(403, `Account is locked`)
 
     // Password check
-
     let password_correct = await compare_password(password, password_hashed)
 
     // Fallback to LDAP if available
@@ -138,15 +137,12 @@ exports.login = async (req, res, next) => {
 
     if (!password_correct) throw createHttpError(403, `Incorrect password`)
 
-    await register_last_login(user)
-
     const jwt = await generate_token(user)
 
-    console.log(
-      `[Auth] Successful login from user identified as ${userIdentifier}`
-    )
-
+    register_last_login(user)
     removeUserFromCache(user._id)
+
+    console.log(`[Auth] Successful login from user ${userIdentifier}`)
 
     res.send({ jwt, user })
   } catch (error) {

@@ -15,6 +15,8 @@ const router_v3 = require("./routes/v3/index.js")
 const { smtp } = require("./mail.js")
 const { hostname: ldapHostname } = require("./ldap")
 
+const { REDIS_URL } = require("./cache")
+
 const {
   url: neo4j_url,
   init: db_init,
@@ -50,6 +52,9 @@ app.get("/", (req, res) => {
     smtp,
     ldap: {
       hostname: ldapHostname,
+    },
+    redis: {
+      url: REDIS_URL,
     },
   })
 })
