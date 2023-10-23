@@ -61,7 +61,8 @@ exports.middleware = async (req, res, next) => {
   try {
     const token = await retrieve_jwt(req, res)
     const decodedToken = await decode_token(token)
-    user = decodedToken.user_id
+    user_id = decodedToken.user_id
+    if (!user_id) throw `Token does not contain user_id`
   } catch (error) {
     console.error(error)
     res.status(403).send(error)
