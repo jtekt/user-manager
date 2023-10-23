@@ -10,6 +10,7 @@ const {
   userAdminUpdateSchema,
 } = require("../../schemas/users.js")
 const { get_current_user_id, user_query } = require("../../utils/users.js")
+const { getCache } = require("../../cache.js")
 
 dotenv.config()
 
@@ -185,7 +186,7 @@ exports.get_users = (req, res, next) => {
     })
 }
 
-exports.get_user = (req, res, next) => {
+exports.get_user = async (req, res, next) => {
   // Route to retrieve an employee's data
 
   // Retrieve employee ID
@@ -205,21 +206,40 @@ exports.get_user = (req, res, next) => {
     RETURN properties(user) as user
     `
 
-  session
-    .run(query, { user_id })
-    .then(({ records }) => {
-      if (!records.length)
-        throw createHttpError(400, `User ${user_id} not found`)
+  try {
+    const { records } = await session.run(query, { user_id })
 
-      const user = records[0].get("user")
-      delete user.password_hashed
+    if (!records.length) throw createHttpError(400, `User ${user_id} not found`)
 
-      res.send(user)
-    })
-    .catch(next)
-    .finally(() => {
-      session.close()
-    })
+    let user
+    const cache = getCache()
+
+    if (cache) {
+      // cache.del(`user:${user_id}`)
+      const userFromCache = await cache.get(`user:${user_id}`)
+      if (userFromCache) {
+        user = JSON.parse(userFromCache)
+        user.cached = true
+      }
+    }
+
+    if (!user) {
+      user = records[0].get("user")
+      if (cache)
+        await cache.set(`user:${user_id}`, JSON.stringify(user), {
+          EX: 60 * 60 * 12,
+        })
+      user.cached = false
+    }
+
+    delete user.password_hashed
+
+    res.send(user)
+  } catch (error) {
+    next(error)
+  } finally {
+    session.close()
+  }
 }
 
 exports.patch_user = async (req, res, next) => {
@@ -259,7 +279,9 @@ exports.patch_user = async (req, res, next) => {
 
     if (!records.length) throw createHttpError(404, `User ${user_id} not found`)
 
-    res.send(records[0].get("user"))
+    const user = records[0].get("user")
+
+    res.send(user)
     console.log(`User ${user_id} patched`)
   } catch (error) {
     next(error)

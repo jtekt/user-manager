@@ -1,8 +1,5 @@
 const neo4j = require("neo4j-driver")
-const dotenv = require("dotenv")
 const { hash_password } = require("./utils/passwords.js")
-
-dotenv.config()
 
 const {
   NEO4J_URL = "bolt://neo4j",
@@ -117,8 +114,8 @@ const create_constraints = async () => {
     // await session.run(`CREATE CONSTRAINT ON (u:User) ASSERT u.username IS UNIQUE`)
     console.log(`[Neo4J] Created constraints`)
   } catch (error) {
-    console.error(`Creating contraints failed`)
-    throw error
+    if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
+      throw error
   } finally {
     session.close()
   }

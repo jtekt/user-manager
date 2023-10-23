@@ -9,16 +9,13 @@ const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 const { TEST_USERNAME = "administrator", TEST_PASSWORD = "administrator" } =
   process.env
 
-// We will test for api users
 describe("/v3/auth", () => {
   before(async () => {
     //console.log = function () {}
     await sleep(7000) // wait for admin account to create (DIRTY)
   })
 
-  // We will test root GET related logics
   describe("POST /v3/auth/login", () => {
-    // What should it do
     it("Should allow login with correct credentials", async () => {
       const { status } = await request(app)
         .post("/v3/auth/login")

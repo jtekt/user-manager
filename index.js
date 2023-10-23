@@ -1,6 +1,10 @@
-const express = require("express")
-const cors = require("cors")
 const dotenv = require("dotenv")
+dotenv.config()
+
+const express = require("express")
+require("express-async-errors")
+
+const cors = require("cors")
 const apiMetrics = require("prometheus-api-metrics")
 const { version, author } = require("./package.json")
 
@@ -16,12 +20,12 @@ const {
   init: db_init,
   get_connected: get_neo4j_connected,
 } = require("./db.js")
-
-dotenv.config()
+const { init: cache_init } = require("./cache")
 
 console.log(`= Account manager v${version} =`)
 
 db_init()
+cache_init()
 
 // Express port
 const { APP_PORT = 80, TZ } = process.env
