@@ -11,7 +11,11 @@ const {
   decode_token,
   generate_token,
 } = require("../../utils/tokens.js")
-const { getUserFromCache, setUserInCache } = require("../../cache.js")
+const {
+  getUserFromCache,
+  setUserInCache,
+  removeUserFromCache,
+} = require("../../cache.js")
 
 const find_user_in_db = (identifier) =>
   new Promise((resolve, reject) => {
@@ -141,6 +145,8 @@ exports.login = async (req, res, next) => {
     console.log(
       `[Auth] Successful login from user identified as ${userIdentifier}`
     )
+
+    removeUserFromCache()
 
     res.send({ jwt, user })
   } catch (error) {
