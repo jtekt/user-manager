@@ -20,3 +20,18 @@ exports.init = async () => {
 }
 
 exports.getCache = () => client
+
+exports.getUserFromCache = async (user_id) => {
+  if (!client) return
+  const userFromCache = await client.get(`user:${user_id}`)
+  if (!userFromCache) return
+  console.log(`[Cache] fetched user ${user_id} from cache`)
+  return { ...JSON.parse(userFromCache), cached: true }
+}
+
+exports.setUserInCache = async (user) => {
+  if (!client) return
+  await client.set(`user:${user._id}`, JSON.stringify(user), {
+    EX: 60 * 60 * 12,
+  })
+}

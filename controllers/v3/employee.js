@@ -10,7 +10,7 @@ const {
   userAdminUpdateSchema,
 } = require("../../schemas/users.js")
 const { get_current_user_id, user_query } = require("../../utils/users.js")
-const { getCache } = require("../../cache.js")
+const { getCache, getUserFromCache, setUserInCache } = require("../../cache.js")
 
 dotenv.config()
 
@@ -191,13 +191,23 @@ exports.get_user = async (req, res, next) => {
 
   // Retrieve employee ID
   // NOTE: Employee ID is NOT Employee number
+
   let { user_id } = req.params
-  if (user_id === "self") user_id = get_current_user_id(res)
+  if (user_id === "self") {
+    console.log(`User looking himself up, serving res.locals.user`)
+    return res.send(res.locals.user)
+  }
   if (!user_id) throw createHttpError(400, `user_id not defined`)
 
   // Forcing as string, hopefully just temporary
   // was needed for whereabouts
   user_id = user_id.toString()
+
+  let user = await getUserFromCache(user_id)
+  if (user) {
+    delete user.password_hashed
+    return res.send(user)
+  }
 
   const session = driver.session()
 
@@ -211,26 +221,9 @@ exports.get_user = async (req, res, next) => {
 
     if (!records.length) throw createHttpError(400, `User ${user_id} not found`)
 
-    let user
-    const cache = getCache()
-
-    if (cache) {
-      // cache.del(`user:${user_id}`)
-      const userFromCache = await cache.get(`user:${user_id}`)
-      if (userFromCache) {
-        user = JSON.parse(userFromCache)
-        user.cached = true
-      }
-    }
-
-    if (!user) {
-      user = records[0].get("user")
-      if (cache)
-        await cache.set(`user:${user_id}`, JSON.stringify(user), {
-          EX: 60 * 60 * 12,
-        })
-      user.cached = false
-    }
+    user = records[0].get("user")
+    await setUserInCache(user)
+    user.cached = false
 
     delete user.password_hashed
 
