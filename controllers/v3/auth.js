@@ -57,19 +57,18 @@ const find_user_in_db = (identifier) =>
   })
 
 exports.middleware = async (req, res, next) => {
+  const token = await retrieve_jwt(req, res)
+  const { user_id } = await decode_token(token)
+
+  let user = await getUserFromCache(user_id)
+  if (user) {
+    res.locals.user = user
+    next()
+    return
+  }
+
+  const session = driver.session()
   try {
-    const token = await retrieve_jwt(req, res)
-    const { user_id } = await decode_token(token)
-
-    let user = await getUserFromCache(user_id)
-    if (user) {
-      res.locals.user = user
-      next()
-      return
-    }
-
-    const session = driver.session()
-
     const query = `
       ${user_query}
       RETURN properties(user) as user
