@@ -221,7 +221,7 @@ exports.get_user = async (req, res, next) => {
     if (!records.length) throw createHttpError(400, `User ${user_id} not found`)
 
     user = records[0].get("user")
-    await setUserInCache(user)
+    setUserInCache(user)
     user.cached = false
 
     delete user.password_hashed
