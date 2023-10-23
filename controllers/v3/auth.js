@@ -57,13 +57,19 @@ const find_user_in_db = (identifier) =>
   })
 
 exports.middleware = async (req, res, next) => {
-  const token = await retrieve_jwt(req, res)
-  const { user_id } = await decode_token(token)
+  try {
+    const token = await retrieve_jwt(req, res)
+    const { user_id } = await decode_token(token)
 
-  let user = await getUserFromCache(user_id)
-  if (user) {
-    res.locals.user = user
-    next()
+    let user = await getUserFromCache(user_id)
+    if (user) {
+      res.locals.user = user
+      next()
+      return
+    }
+  } catch (error) {
+    console.error(error)
+    res.status(403).send(error)
     return
   }
 
@@ -89,7 +95,7 @@ exports.middleware = async (req, res, next) => {
 
     next()
   } catch (error) {
-    console.log(error)
+    console.error(error)
     res.status(403).send(error)
   } finally {
     session.close()
