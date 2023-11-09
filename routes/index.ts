@@ -1,8 +1,8 @@
 import { Router } from "express"
-import { smtp } from "../mail"
+import { SMTP_HOST, SMTP_PORT, SMTP_FROM } from "../mail"
 import { hostname as ldapHostname } from "../ldap"
 import { REDIS_URL } from "../cache"
-import { url as neo4j_url, get_connected as get_neo4j_connected } from "../db"
+import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db"
 import { version, author } from "../package.json"
 import router_v1 from "./v1/index"
 import router_v2 from "./v2/index"
@@ -16,10 +16,14 @@ router.route("/", (req: Request, res: Response) => {
     author,
     version,
     neo4j: {
-      url: neo4j_url,
+      url: NEO4J_URL,
       connected: get_neo4j_connected(),
     },
-    smtp,
+    smtp: {
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      from: SMTP_FROM,
+    },
     ldap: {
       hostname: ldapHostname,
     },

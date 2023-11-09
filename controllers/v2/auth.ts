@@ -1,12 +1,10 @@
-import { drivers } from "../../db"
+import { driver } from "../../db"
 import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
 import { register_last_login, user_query } from "../../utils/users"
 
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
-
-const driver = drivers.v2
 
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {

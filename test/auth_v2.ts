@@ -1,8 +1,6 @@
 import request from "supertest"
 import { expect } from "chai"
 import { app } from "../index"
-import dotenv from "dotenv"
-dotenv.config()
 
 const sleep = (delay: number) =>
   new Promise((resolve) => setTimeout(resolve, delay))

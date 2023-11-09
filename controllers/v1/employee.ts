@@ -1,18 +1,18 @@
+import createHttpError from "http-errors"
 import { drivers } from "../../db"
 import { get_current_user_id, user_query } from "../../utils/users"
+
 const driver = drivers.v1
 
+// TODO: deprecate this endpoint
 export const get_employee = (
   req: request,
   res: response,
   next: nextfunction
 ) => {
-  // Route to retrieve an employee's data
-
-  // Retrieve employee ID
   let user_id = req.params.employee_id
   if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) return res.status(400).send(`employee_id not defined`)
+  if (!user_id) throw createHttpError(400, `employee_id not defined`)
 
   const session = driver.session()
 
@@ -24,11 +24,8 @@ export const get_employee = (
   session
     .run(query, { user_id })
     .then(({ records }: any) => {
-      if (!records.length) {
-        console.log(`[Neo4J] User ${user_id} not found`)
-        return res.status(400).send(`User ${user_id} not found`)
-      }
-      console.log(`[Neo4J] Profile of user ${user_id} queried`)
+      if (!records.length)
+        throw createHttpError(404, `User ${user_id} not found`)
       res.send(records)
     })
     .catch(next)
@@ -72,27 +69,29 @@ export const get_employees = (
   }
 
   const session = driver.session()
+
+  const query = `
+  // Find the employee using the ID
+  MATCH (employee)
+  WHERE employee:Employee OR employee:User
+
+
+  ${search_query}
+  ${ids_query}
+
+  RETURN DISTINCT employee
+
+  LIMIT 100
+  `
+
+  const params = {
+    search: req.query.search,
+    exceptions: ["password_hashed"],
+    ids: req.query.ids,
+  }
+
   session
-    .run(
-      `
-    // Find the employee using the ID
-    MATCH (employee)
-    WHERE employee:Employee OR employee:User
-
-
-    ${search_query}
-    ${ids_query}
-
-    RETURN DISTINCT employee
-
-    LIMIT 100
-    `,
-      {
-        search: req.query.search,
-        exceptions: ["password_hashed"],
-        ids: req.query.ids,
-      }
-    )
+    .run(query, params)
     .then(({ records }: any) => {
       const employees = records.map((record: any) => record.get("employee"))
       res.send(employees)

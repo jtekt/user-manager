@@ -5,7 +5,7 @@ import { generate_token } from "./utils/tokens"
 dotenv.config()
 
 // parsing environment
-const { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM } =
+export const { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM } =
   process.env
 
 export const options = {
@@ -58,11 +58,4 @@ export const send_password_reset_email = async ({ url, user }: any) => {
   } catch (e) {
     throw `Error while sending email: ${e}`
   }
-}
-
-// What is this used for?
-export const smtp = {
-  host: options.host,
-  port: options.port,
-  from: SMTP_FROM,
 }

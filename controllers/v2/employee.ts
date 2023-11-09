@@ -1,7 +1,5 @@
-import { drivers } from "../../db"
+import { driver } from "../../db"
 import { get_current_user_id, user_query } from "../../utils/users"
-
-const driver = drivers.v2
 
 export const get_user = (req: request, res: response, next: nextfunction) => {
   // Route to retrieve an employee's data
@@ -74,9 +72,6 @@ export const get_users = (req: request, res: response, next: nextfunction) => {
     ${ids_query}
 
     RETURN DISTINCT user
-
-    // TODO: BATCHING
-
     LIMIT 200
     `
 

@@ -1,18 +1,18 @@
 import createHttpError from "http-errors"
-import { hash_password } from "../../utils/passwords.js"
+import { hash_password } from "../../utils/passwords"
 import { driver } from "../../db"
 
 import {
   newUserSchema,
   userUpdateSchema,
   userAdminUpdateSchema,
-} from "../../schemas/users.js"
-import { get_current_user_id, user_query } from "../../utils/users.js"
+} from "../../schemas/users"
+import { get_current_user_id, user_query } from "../../utils/users"
 import {
   getUserFromCache,
   setUserInCache,
   removeUserFromCache,
-} from "../../cache.js"
+} from "../../cache"
 
 export const create_user = async (
   req: request,
@@ -79,6 +79,9 @@ export const get_users = (req: request, res: response, next: nextfunction) => {
     ...filters
   } = req.query
 
+  // IDEA: could allow filtering with array
+
+  // TODO: use OR statement instead?
   const search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
@@ -144,6 +147,7 @@ export const get_users = (req: request, res: response, next: nextfunction) => {
       batch_size
     `
 
+  // TODO: make this customizable with env vars
   const searchableKeys = [
     "email_address",
     "display_name",

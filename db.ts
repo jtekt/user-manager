@@ -1,10 +1,12 @@
 import neo4j from "neo4j-driver"
 import { hash_password } from "./utils/passwords"
 
-const {
+export const {
   NEO4J_URL = "bolt://neo4j",
   NEO4J_USERNAME = "neo4j",
   NEO4J_PASSWORD = "neo4j",
+  DEFAULT_ADMIN_USERNAME: admin_username = "administrator",
+  DEFAULT_ADMIN_PASSWORD: admin_password = "administrator",
 } = process.env
 
 const auth = neo4j.auth.basic(NEO4J_USERNAME, NEO4J_PASSWORD)
@@ -61,11 +63,6 @@ const create_admin_if_not_exists = async () => {
   const session = driver.session()
 
   try {
-    const {
-      DEFAULT_ADMIN_USERNAME: admin_username = "administrator",
-      DEFAULT_ADMIN_PASSWORD: admin_password = "administrator",
-    } = process.env
-
     const password_hashed = await hash_password(admin_password)
 
     const query = `
@@ -74,6 +71,7 @@ const create_admin_if_not_exists = async () => {
 
       // Check if the administrator account is missing its password
       // If the administrator account does not have a password (newly created), set it
+      // TODO: consider using ON CREATE
       WITH administrator
       WHERE administrator.password_hashed IS NULL
       SET administrator.password_hashed = $password_hashed
@@ -140,5 +138,4 @@ export const init = async () => {
 }
 
 export const url = NEO4J_URL
-
 export const get_connected = () => connected

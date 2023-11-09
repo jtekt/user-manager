@@ -1,8 +1,6 @@
 import request from "supertest"
 import { expect } from "chai"
-import { app } from "../index.js"
-import dotenv from "dotenv"
-dotenv.config()
+import { app } from "../index"
 
 const { TEST_USERNAME = "administrator", TEST_PASSWORD = "administrator" } =
   process.env
