@@ -1,14 +1,15 @@
 import createHttpError from "http-errors"
 import { drivers } from "../../db"
 import { get_current_user_id, user_query } from "../../utils/users"
+import { Request, Response, NextFunction } from "express"
 
 const driver = drivers.v1
 
 // TODO: deprecate this endpoint
 export const get_employee = (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   let user_id = req.params.employee_id
   if (user_id === "self") user_id = get_current_user_id(res)
@@ -35,9 +36,9 @@ export const get_employee = (
 }
 
 export const get_employees = (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   // Route to retrieve employees
 

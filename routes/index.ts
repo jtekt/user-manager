@@ -7,10 +7,11 @@ import { version, author } from "../package.json"
 import router_v1 from "./v1/index"
 import router_v2 from "./v2/index"
 import router_v3 from "./v3/index"
+import { Request, Response } from "express"
 
 const router = Router()
 
-router.route("/", (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   res.send({
     application_name: "Account manager",
     author,

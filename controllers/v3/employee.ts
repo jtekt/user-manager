@@ -1,6 +1,7 @@
 import createHttpError from "http-errors"
 import { hash_password } from "../../utils/passwords"
 import { driver } from "../../db"
+import { Request, Response, NextFunction } from "express"
 
 import {
   newUserSchema,
@@ -15,9 +16,9 @@ import {
 } from "../../cache"
 
 export const create_user = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   const session = driver.session()
 
@@ -29,7 +30,7 @@ export const create_user = async (
     // TODO: only email
     try {
       await newUserSchema.validateAsync(properties)
-    } catch (error) {
+    } catch (error: any) {
       throw createHttpError(400, error)
     }
 
@@ -69,7 +70,7 @@ export const create_user = async (
   }
 }
 
-export const get_users = (req: request, res: response, next: nextfunction) => {
+export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const {
     search,
     ids,
@@ -194,9 +195,9 @@ export const get_users = (req: request, res: response, next: nextfunction) => {
 }
 
 export const get_user = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   // Route to retrieve an employee's data
   // NOTE: Employee ID is NOT Employee number
@@ -240,9 +241,9 @@ export const get_user = async (
 }
 
 export const patch_user = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const current_user_id = get_current_user_id(res)
@@ -263,7 +264,7 @@ export const patch_user = async (
       if (current_user_is_admin)
         await userAdminUpdateSchema.validateAsync(properties)
       else await userUpdateSchema.validateAsync(properties)
-    } catch (error) {
+    } catch (error: any) {
       throw createHttpError(403, error)
     }
 
@@ -292,9 +293,9 @@ export const patch_user = async (
 }
 
 export const delete_user = (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   // Prevent normal users to delete a user
   if (!res.locals.user.isAdmin)

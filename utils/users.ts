@@ -1,11 +1,11 @@
 import { driver } from "../db"
-import { Request } from "express"
+import { Response } from "express"
 
 export const get_id_of_user = (user: any) => {
   return user._id ?? user.properties._id ?? user.identity.low ?? user.identity
 }
 
-export const get_current_user_id = (res: Request) => {
+export const get_current_user_id = (res: Response) => {
   const user = res.locals.user
   return get_id_of_user(user)
 }

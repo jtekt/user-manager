@@ -1,3 +1,5 @@
+import { Request, Response, NextFunction } from "express"
+
 export default function (
   error: any,
   req: Request,

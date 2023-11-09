@@ -8,7 +8,7 @@ dotenv.config()
 export const { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM } =
   process.env
 
-export const options = {
+export const options: any = {
   host: SMTP_HOST,
   port: SMTP_PORT,
   secure: true, // upgrade later with STARTTLS

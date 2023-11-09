@@ -1,7 +1,8 @@
 import { driver } from "../../db"
 import { get_current_user_id, user_query } from "../../utils/users"
+import { Request, Response, NextFunction } from "express"
 
-export const get_user = (req: request, res: response, next: nextfunction) => {
+export const get_user = (req: Request, res: Response, next: NextFunction) => {
   // Route to retrieve an employee's data
 
   // Retrieve employee ID
@@ -35,7 +36,7 @@ export const get_user = (req: request, res: response, next: nextfunction) => {
     })
 }
 
-export const get_users = (req: request, res: response, next: nextfunction) => {
+export const get_users = (req: Request, res: Response, next: NextFunction) => {
   // Route to retrieve employees
 
   const { search, ids, employee_numbers } = req.query

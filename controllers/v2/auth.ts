@@ -3,6 +3,7 @@ import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
 import { register_last_login, user_query } from "../../utils/users"
+import { Request, Response, NextFunction } from "express"
 
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
 
@@ -50,9 +51,9 @@ const find_user_in_db = (identifier: string) =>
   })
 
 export const middleware = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   const session = driver.session()
 
@@ -85,9 +86,9 @@ export const middleware = async (
 }
 
 export const login = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // Input management

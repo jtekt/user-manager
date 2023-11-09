@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken"
 import Cookies from "cookies"
 import createHttpError from "http-errors"
 import { get_id_of_user } from "./users"
+import { Request, Response } from "express"
 
 const { JWT_SECRET } = process.env
 
@@ -33,7 +34,7 @@ export const generate_token = (user: any) =>
 
     const token_content = { user_id }
 
-    jwt.sign(token_content, JWT_SECRET, (error: any, token: string) => {
+    jwt.sign(token_content, JWT_SECRET, (error: any, token: any) => {
       if (error) return reject({ code: 500, message: error })
       resolve(token)
     })

@@ -4,11 +4,12 @@ import { send_password_reset_email } from "../../mail"
 import { hash_password } from "../../utils/passwords"
 import { get_current_user_id, user_query } from "../../utils/users"
 import { driver } from "../../db"
+import { Request, Response, NextFunction } from "express"
 
 export const update_password = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   const session = driver.session()
 
@@ -33,7 +34,7 @@ export const update_password = async (
 
     try {
       await passwordUpdateSchema.validateAsync(req.body)
-    } catch (error) {
+    } catch (error: any) {
       throw createHttpError(400, error.message)
     }
 
@@ -63,9 +64,9 @@ export const update_password = async (
 }
 
 export const request_password_reset = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   const session = driver.session()
 

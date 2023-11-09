@@ -2,6 +2,7 @@ import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
 import { register_last_login, user_query } from "../../utils/users"
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
+import { Request, Response, NextFunction } from "express"
 
 import { driver } from "../../db"
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
@@ -55,14 +56,14 @@ const find_user_in_db = (identifier: string) =>
   })
 
 export const middleware = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   let user_id
   try {
-    const token = await retrieve_jwt(req, res)
-    const decodedToken = await decode_token(token)
+    const token = (await retrieve_jwt(req, res)) as string
+    const decodedToken = (await decode_token(token)) as any
     user_id = decodedToken.user_id
     if (!user_id) throw `Token does not contain user_id`
   } catch (error) {
@@ -108,9 +109,9 @@ export const middleware = async (
 }
 
 export const login = async (
-  req: request,
-  res: response,
-  next: nextfunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // Input parsing
