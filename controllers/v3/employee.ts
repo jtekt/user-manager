@@ -26,12 +26,14 @@ export const create_user = async (
       throw createHttpError(403, `Only administrators can create users`)
 
     const properties = req.body
+    // TODO: only email
     try {
       await newUserSchema.validateAsync(properties)
     } catch (error) {
       throw createHttpError(400, error)
     }
 
+    // TODO: MERGE using email
     const { username, password, email_address, display_name } = properties
 
     const password_hashed = await hash_password(password)

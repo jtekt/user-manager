@@ -40,7 +40,7 @@ export const send_activation_email = async ({ url, user }: any) => {
   }
 }
 
-export const send_password_reset_email = async ({ url, user }) => {
+export const send_password_reset_email = async ({ url, user }: any) => {
   try {
     const { email_address } = user
     const token = await generate_token(user)
