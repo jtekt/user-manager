@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
+    "dev": "nodemon index.ts",
+    "start": "ts-node index.ts",
     "test": "mocha --timeout 10000 --exit",
     "coverage": "nyc mocha --timeout 30000 --exit"
   },
