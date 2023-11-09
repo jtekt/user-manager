@@ -34,27 +34,24 @@ export const create_user = async (
     }
 
     // TODO: MERGE using email
-    const { username, password, email_address, display_name } = properties
+    const { password, email_address, display_name } = properties
 
     const password_hashed = await hash_password(password)
 
     const query = `
-      // Merge with email_address as unique
-      CREATE (user:User:Employee)
+      MERGE (user:User:Employee {email_address: $user_properties.email_address})
 
-      SET user += $user_properties
-      SET user._id = randomUUID()
-      SET user.creation_date = date()
+      ON CREATE SET user += $user_properties
+      ON CREATE SET user._id = randomUUID()
+      ON CREATE SET user.creation_date = date()
 
-      // Return the account
       RETURN properties(user) as user
       `
 
     const user_properties = {
-      username,
       email_address,
       password_hashed,
-      display_name: display_name || username || email_address,
+      display_name: display_name || email_address,
     }
 
     const { records } = await session.run(query, { user_properties })

@@ -1,5 +1,8 @@
 import dotenv from "dotenv"
 dotenv.config()
+import { version } from "./package.json"
+console.log(`= Account manager v${version} =`)
+
 import express from "express"
 import "express-async-errors"
 import cors from "cors"
@@ -8,9 +11,6 @@ import rootRouter from "./routes/index"
 import errorHandler from "./utils/errorHandler"
 import { init as db_init } from "./db"
 import { init as cache_init } from "./cache"
-import { version } from "./package.json"
-
-console.log(`= Account manager v${version} =`)
 
 db_init()
 cache_init()
@@ -25,7 +25,6 @@ app.use(apiMetrics())
 app.use("/", rootRouter)
 app.use(errorHandler)
 
-// Start the server
 app.listen(APP_PORT, () =>
   console.log(`[Express] listening on port ${APP_PORT}`)
 )
