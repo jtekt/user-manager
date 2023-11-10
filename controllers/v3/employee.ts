@@ -80,25 +80,17 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     ...filters
   } = req.query
 
-  // IDEA: could allow filtering with array
+  const searchableFields = [
+    "email_address",
+    "display_name",
+    "_id",
+    "employee_number",
+  ]
+  const searchArgs = searchableFields
+    .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)
+    .join(" OR ")
 
-  // TODO: use OR statement instead?
-  const search_query = `
-    // Make a list of the keys of each node
-    // Additionally, filter out fields that should not be searched
-    // NOTE: Exceptions are slow so changed to inclusions
-    // WITH user, [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys
-    WITH [key IN $searchableKeys] AS keys, user
-
-    // Unwinding
-    UNWIND keys as key
-
-    // Filter nodes by looking for properties
-    WITH key, user
-
-    WHERE toLower(toString(user[key])) CONTAINS toLower($search)
-    `
-
+  // TODO: unwind if array
   const filtering_query = `
     UNWIND KEYS($filters) as filterKey
     // This WITH is needed to isolate from previous MATCH
@@ -127,7 +119,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
 
   const query = `
     OPTIONAL MATCH (user:User)
-    ${search ? search_query : ""}
+    WHERE ${searchArgs}
     ${Object.keys(filters).length ? filtering_query : ""}
     ${ids ? ids_query : ""}
     ${employee_numbers ? employee_numbers_query : ""}
@@ -148,17 +140,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
       batch_size
     `
 
-  // TODO: make this customizable with env vars
-  const searchableKeys = [
-    "email_address",
-    "display_name",
-    "_id",
-    "employee_number",
-  ]
-
   const parameters = {
-    exceptions: ["password_hashed", "_id", "avatar_src", "active"],
-    searchableKeys,
     search,
     ids,
     employee_numbers,

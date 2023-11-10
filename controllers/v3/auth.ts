@@ -17,6 +17,8 @@ const find_user_in_db = (identifier: string) =>
     // The error handling here is quite bad
     const session = driver.session()
 
+    // TODO: allow custom identifiers
+
     const query = `
     MATCH (user:User)
 
