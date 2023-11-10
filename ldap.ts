@@ -22,6 +22,7 @@ export const authenticateWithLdap = async (
     return true
   } catch (error: any) {
     console.log(error)
+    console.log(error.admin)
     return false
   }
 }

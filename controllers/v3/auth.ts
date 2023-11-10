@@ -3,7 +3,6 @@ import { compare_password } from "../../utils/passwords"
 import { register_last_login, user_query } from "../../utils/users"
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
 import { Request, Response, NextFunction } from "express"
-
 import { driver } from "../../db"
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
 import {
@@ -135,16 +134,12 @@ export const login = async (
     if (locked) throw createHttpError(403, `Account is locked`)
 
     // Password check
-    let password_correct = await compare_password(password, password_hashed)
-
-    // Fallback to LDAP if available
-    if (!password_correct && ldapHostname) {
-      console.log("[Auth] DB login failed, falling back to LDAP")
-      password_correct = await authenticateWithLdap(
-        user.email_address,
-        password
-      )
-    }
+    const promises = [
+      // compare_password(password, password_hashed),
+      authenticateWithLdap(user.email_address, password),
+    ]
+    const result = await Promise.all(promises)
+    const password_correct = result.some((i) => !!i)
 
     if (!password_correct) throw createHttpError(403, `Incorrect password`)
 
