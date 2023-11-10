@@ -26,6 +26,7 @@ build:
     - dind
   only:
     - master
+    - typescript
   before_script:
     # ECR login for pushing and pulling
     - >
@@ -54,6 +55,7 @@ test:
     - dind
   only:
     - master
+    - typescript
   before_script:
     # ECR login for pushing and pulling
     - >

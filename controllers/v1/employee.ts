@@ -1,0 +1,104 @@
+import createHttpError from "http-errors"
+import { drivers } from "../../db"
+import { get_current_user_id, user_query } from "../../utils/users"
+import { Request, Response, NextFunction } from "express"
+
+const driver = drivers.v1
+
+// TODO: deprecate this endpoint
+export const get_employee = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let user_id = req.params.employee_id
+  if (user_id === "self") user_id = get_current_user_id(res)
+  if (!user_id) throw createHttpError(400, `employee_id not defined`)
+
+  const session = driver.session()
+
+  const query = `
+    ${user_query}
+    RETURN user
+    `
+
+  session
+    .run(query, { user_id })
+    .then(({ records }: any) => {
+      if (!records.length)
+        throw createHttpError(404, `User ${user_id} not found`)
+      res.send(records)
+    })
+    .catch(next)
+    .finally(() => {
+      session.close()
+    })
+}
+
+export const get_employees = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Route to retrieve employees
+
+  let search_query = ""
+  if (req.query.search) {
+    search_query = `
+    // Make a list of the keys of each node
+    // Additionally, filter out fields that should not be searched
+    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
+
+    // Unwinding
+    UNWIND keys as key
+
+    // Filter nodes by looking for properties
+    WITH key, employee
+    WHERE toLower(toString(employee[key])) CONTAINS toLower($search)
+    `
+  }
+
+  let ids_query = ""
+  if (req.query.ids) {
+    search_query = `
+    WITH employee
+    UNWIND $ids as id
+    WITH id, employee
+    //WHERE id(employee)=toInteger(id)
+    WHERE employee._id = id
+    `
+  }
+
+  const session = driver.session()
+
+  const query = `
+  // Find the employee using the ID
+  MATCH (employee)
+  WHERE employee:Employee OR employee:User
+
+
+  ${search_query}
+  ${ids_query}
+
+  RETURN DISTINCT employee
+
+  LIMIT 100
+  `
+
+  const params = {
+    search: req.query.search,
+    exceptions: ["password_hashed"],
+    ids: req.query.ids,
+  }
+
+  session
+    .run(query, params)
+    .then(({ records }: any) => {
+      const employees = records.map((record: any) => record.get("employee"))
+      res.send(employees)
+    })
+    .catch(next)
+    .finally(() => {
+      session.close()
+    })
+}
