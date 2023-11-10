@@ -8,6 +8,7 @@ const { TEST_USERNAME = "administrator", TEST_PASSWORD = "administrator" } =
 // We will test for api users
 describe("/v2/users", () => {
   let admin_jwt: string
+  let admin_id: string
 
   before(async () => {
     //console.log = function () {}
