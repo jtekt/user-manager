@@ -20,7 +20,8 @@ export const authenticateWithLdap = async (
   try {
     await authenticate(options)
     return true
-  } catch (error) {
+  } catch (error: any) {
+    console.log(error)
     return false
   }
 }

@@ -17,18 +17,20 @@ const find_user_in_db = (identifier: string) =>
     // The error handling here is quite bad
     const session = driver.session()
 
-    // TODO: allow custom identifiers
+    const identifierFields = [
+      "email_address",
+      "username",
+      "_id",
+      "employee_number",
+    ]
+
+    const identificationArgs = identifierFields
+      .map((f) => `user.${f} = $identifier`)
+      .join(" OR ")
 
     const query = `
     MATCH (user:User)
-
-    // Allow user to identify using either userrname or email address
-    // NOTE: using employee number is not supported yet
-    WHERE user.email_address = $identifier
-      OR user.username = $identifier
-      OR user._id = $identifier
-
-    // Return user if found
+    WHERE ${identificationArgs}
     RETURN properties(user) as user
     `
 
@@ -47,7 +49,9 @@ const find_user_in_db = (identifier: string) =>
 
         const user = records[0].get("user")
 
-        console.log(`[Neo4j] User ${identifier} successfully found in the DB`)
+        console.log(
+          `[Neo4j] User ${identifier} found in the DB (ID: ${user._id})`
+        )
 
         resolve(user)
       })
@@ -134,11 +138,13 @@ export const login = async (
     let password_correct = await compare_password(password, password_hashed)
 
     // Fallback to LDAP if available
-    if (!password_correct && ldapHostname)
+    if (!password_correct && ldapHostname) {
+      console.log("[Auth] DB login failed, falling back to LDAP")
       password_correct = await authenticateWithLdap(
         user.email_address,
         password
       )
+    }
 
     if (!password_correct) throw createHttpError(403, `Incorrect password`)
 
