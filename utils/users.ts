@@ -20,10 +20,10 @@ export const register_last_login = async (user: any) => {
   try {
     const user_id = get_id_of_user(user)
     const query = `
-            ${user_query}
-            SET user.last_login = date()
-            RETURN user.last_login as last_login
-            `
+      ${user_query}
+      SET user.last_login = date()
+      RETURN user.last_login as last_login
+      `
 
     await session.run(query, { user_id })
   } catch (error) {

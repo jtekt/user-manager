@@ -133,6 +133,7 @@ export const login = async (
       `[Auth v2] Successful login from user identified as ${identifier}`
     )
   } catch (error) {
+    console.log(error)
     next(error)
   }
 }
