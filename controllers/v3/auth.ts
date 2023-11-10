@@ -135,7 +135,7 @@ export const login = async (
 
     // Password check
     const promises = [
-      // compare_password(password, password_hashed),
+      compare_password(password, password_hashed),
       authenticateWithLdap(user.email_address, password),
     ]
     const result = await Promise.all(promises)
