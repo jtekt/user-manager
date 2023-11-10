@@ -40,8 +40,6 @@ const find_user_in_db = (identifier: string) =>
 
         const user = records[0].get("user")
 
-        console.log(`[Neo4j] User ${identifier} successfully found in the DB`)
-
         resolve(user)
       })
       .catch((error) => {
@@ -103,8 +101,6 @@ export const login = async (
     if (!identifier)
       throw createHttpError(400, `Missing username or e-mail address`)
     if (!password) throw createHttpError(400, `Missing password`)
-
-    console.log(`[Auth] Login attempt from user identified as ${identifier}`)
 
     // User query
     const user = (await find_user_in_db(identifier)) as any
