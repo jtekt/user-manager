@@ -72,7 +72,7 @@ export const create_user = async (
 
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const {
-    search,
+    search = "",
     ids,
     employee_numbers, // TODO: this is specific to this company
     batch_size = 100,
