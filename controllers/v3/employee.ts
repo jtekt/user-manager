@@ -15,6 +15,8 @@ import {
   removeUserFromCache,
 } from "../../cache"
 
+const { SEARCHABLE_FIELDS = "" } = process.env
+
 export const create_user = async (
   req: Request,
   res: Response,
@@ -84,7 +86,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     "email_address",
     "display_name",
     "_id",
-    "employee_number",
+    ...SEARCHABLE_FIELDS.split(","),
   ]
   const searchArgs = searchableFields
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)

@@ -11,6 +11,8 @@ import {
   removeUserFromCache,
 } from "../../cache"
 
+const { IDENTIFIER_FIELDS = "" } = process.env
+
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
     // The error handling here is quite bad
@@ -20,7 +22,7 @@ const find_user_in_db = (identifier: string) =>
       "email_address",
       "username",
       "_id",
-      "employee_number",
+      ...IDENTIFIER_FIELDS.split(","),
     ]
 
     const identificationArgs = identifierFields
