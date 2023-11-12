@@ -18,12 +18,10 @@ const find_user_in_db = (identifier: string) =>
     // The error handling here is quite bad
     const session = driver.session()
 
-    const identifierFields = [
-      "email_address",
-      "username",
-      "_id",
-      ...IDENTIFIER_FIELDS.split(","),
-    ]
+    const identifierFields = ["email_address", "username", "_id"]
+
+    if (IDENTIFIER_FIELDS)
+      IDENTIFIER_FIELDS.split(",").forEach((f) => identifierFields.push(f))
 
     const identificationArgs = identifierFields
       .map((f) => `user.${f} = $identifier`)

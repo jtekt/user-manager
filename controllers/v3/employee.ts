@@ -82,12 +82,11 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     ...filters
   } = req.query
 
-  const searchableFields = [
-    "email_address",
-    "display_name",
-    "_id",
-    ...SEARCHABLE_FIELDS.split(","),
-  ]
+  const searchableFields = ["email_address", "display_name", "_id"]
+
+  if (SEARCHABLE_FIELDS)
+    SEARCHABLE_FIELDS.split(",").forEach((f) => searchableFields.push(f))
+
   const searchArgs = searchableFields
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)
     .join(" OR ")
