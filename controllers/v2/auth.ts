@@ -7,21 +7,25 @@ import { Request, Response, NextFunction } from "express"
 
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
 
+const { IDENTIFIER_FIELDS = "" } = process.env
+
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
     // The error management here is quite bad
     const session = driver.session()
 
+    const identifierFields = ["email_address", "username", "_id"]
+
+    if (IDENTIFIER_FIELDS)
+      IDENTIFIER_FIELDS.split(",").forEach((f) => identifierFields.push(f))
+
+    const identificationArgs = identifierFields
+      .map((f) => `user.${f} = $identifier`)
+      .join(" OR ")
+
     const query = `
     MATCH (user:User)
-
-    // Allow user to identify using either userrname or email address
-    WHERE user.email_address = $identifier
-      OR user.username = $identifier
-      OR user._id = $identifier
-      //OR id(user) = toInteger($identifier) // <= REMOVED!!
-
-    // Return user if found
+    WHERE ${identificationArgs}
     RETURN DISTINCT(user)
     `
 
