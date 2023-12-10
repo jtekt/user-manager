@@ -228,6 +228,8 @@ export const patch_user = async (
   res: Response,
   next: NextFunction
 ) => {
+  const session = driver.session()
+
   try {
     const current_user_id = get_current_user_id(res)
     const current_user_is_admin = res.locals.user.isAdmin
@@ -251,8 +253,6 @@ export const patch_user = async (
       throw createHttpError(403, error)
     }
 
-    const session = driver.session()
-
     const query = `
       ${user_query}
       SET user += $properties
@@ -272,6 +272,8 @@ export const patch_user = async (
     console.log(`User ${user_id} patched`)
   } catch (error) {
     next(error)
+  } finally {
+    session.close()
   }
 }
 

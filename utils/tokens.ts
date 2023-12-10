@@ -27,10 +27,9 @@ export const retrieve_jwt = (req: Request, res: Response) =>
 
 export const generate_token = (user: any) =>
   new Promise((resolve, reject) => {
-    // Forcing string
-    const user_id = get_id_of_user(user).toString()
-
-    const token_content = { user_id }
+    const user_id = get_id_of_user(user).toString() // Forcing string
+    const { token_id } = user
+    const token_content = { user_id, token_id }
 
     jwt.sign(token_content, JWT_SECRET, (error: any, token: any) => {
       if (error) return reject({ code: 500, message: error })

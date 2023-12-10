@@ -61,7 +61,7 @@ export const middleware = async (
 
   try {
     const token = (await retrieve_jwt(req, res)) as string
-    const { user_id }: any = await decode_token(token)
+    const { user_id, token_id: tokenFromJwt }: any = await decode_token(token)
 
     const query = `${user_query} RETURN user`
 
@@ -74,6 +74,8 @@ export const middleware = async (
       throw `Multiple users with ID ${user_id} found in the database`
 
     const user = records[0].get("user")
+
+    if (tokenFromJwt !== user.token_id) throw `Token has been revoked`
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user

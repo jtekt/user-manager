@@ -1,7 +1,7 @@
 import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
 import { register_last_login, user_query } from "../../utils/users"
-import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
+import { authenticateWithLdap } from "../../ldap"
 import { Request, Response, NextFunction } from "express"
 import { driver } from "../../db"
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
@@ -65,12 +65,14 @@ export const middleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  let user_id
+  let user_id: string
+  let decodedToken: any
+
   try {
     const token = (await retrieve_jwt(req, res)) as string
-    const decodedToken = (await decode_token(token)) as any
+    decodedToken = await decode_token(token)
     user_id = decodedToken.user_id
-    if (!user_id) throw `Token does not contain user_id`
+    if (!decodedToken.user_id) throw `Token does not contain user_id`
   } catch (error) {
     console.error(error)
     res.status(403).send(error)
@@ -79,6 +81,9 @@ export const middleware = async (
 
   let user = await getUserFromCache(user_id)
   if (user) {
+    if (decodedToken.token_id !== user.token_id)
+      return res.status(403).send(`Token has been revoked`)
+
     res.locals.user = user
     next()
     return
@@ -98,10 +103,12 @@ export const middleware = async (
       throw `Multiple users with ID ${user_id} found in the database`
 
     user = records[0].get("user")
+
+    if (decodedToken.token_id !== user.token_id) throw `Token has been revoked`
+
     setUserInCache(user)
     user.cached = false
 
-    // save user in res locasl so that it can use in other places
     res.locals.user = user
 
     next()
