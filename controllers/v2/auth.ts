@@ -75,7 +75,8 @@ export const middleware = async (
 
     const user = records[0].get("user")
 
-    if (tokenFromJwt !== user.token_id) throw `Token has been revoked`
+    if (tokenFromJwt !== user.properties.token_id)
+      throw `Token has been revoked`
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user
