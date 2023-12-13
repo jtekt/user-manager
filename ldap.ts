@@ -7,6 +7,8 @@ export const authenticateWithLdap = async (
   email_address: string,
   password: string
 ) => {
+  if (!LDAP_HOSTNAME) return false
+
   const options = {
     ldapOpts: { url: `ldap://${LDAP_HOSTNAME}` },
     adminDn: LDAP_USERNAME,
