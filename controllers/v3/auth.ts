@@ -94,6 +94,7 @@ export const login = async (
 
     console.log(`[Auth] Successful login from user ${userIdentifier}`)
 
+    // TODO: refresh token
     res.send({ jwt, user })
   } catch (error) {
     next(error)
