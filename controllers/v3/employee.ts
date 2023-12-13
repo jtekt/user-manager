@@ -36,7 +36,6 @@ export const create_user = async (
       throw createHttpError(400, error)
     }
 
-    // TODO: MERGE using email
     const { password, email_address, display_name } = properties
 
     const password_hashed = await hash_password(password)

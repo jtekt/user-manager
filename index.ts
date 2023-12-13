@@ -2,13 +2,14 @@ import dotenv from "dotenv"
 dotenv.config()
 import { version } from "./package.json"
 console.log(`= Account manager v${version} =`)
-
 import express from "express"
 import "express-async-errors"
 import cors from "cors"
 import promBundle from "express-prom-bundle"
 import rootRouter from "./routes/index"
 import errorHandler from "./utils/errorHandler"
+import swaggerUi from "swagger-ui-express"
+import swaggerDocument from "./swagger-output.json"
 import { init as db_init } from "./db"
 import { init as cache_init } from "./cache"
 
@@ -23,6 +24,7 @@ export const app = express()
 app.use(express.json())
 app.use(cors())
 app.use(promBundle(promOptions))
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 app.use("/", rootRouter)
 app.use(errorHandler)
 
