@@ -2,7 +2,6 @@ import dotenv from "dotenv"
 dotenv.config()
 import { version } from "./package.json"
 console.log(`= Account manager v${version} =`)
-
 import express from "express"
 import "express-async-errors"
 import cors from "cors"
