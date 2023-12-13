@@ -11,7 +11,7 @@ import {
   removeUserFromCache,
 } from "../../cache"
 
-const { IDENTIFIER_FIELDS = "" } = process.env
+const { IDENTIFIER_FIELDS = "", JWT_EXPIRATION_TIME = "infinite" } = process.env
 
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
@@ -60,66 +60,6 @@ const find_user_in_db = (identifier: string) =>
       .finally(() => session.close())
   })
 
-export const middleware = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  let user_id: string
-  let decodedToken: any
-
-  try {
-    const token = (await retrieve_jwt(req, res)) as string
-    decodedToken = await decode_token(token)
-    user_id = decodedToken.user_id
-    if (!decodedToken.user_id) throw `Token does not contain user_id`
-  } catch (error) {
-    console.error(error)
-    res.status(403).send(error)
-    return
-  }
-
-  let user = await getUserFromCache(user_id)
-  if (user) {
-    if (decodedToken.token_id !== user.token_id)
-      return res.status(403).send(`Token has been revoked`)
-
-    res.locals.user = user
-    next()
-    return
-  }
-
-  const session = driver.session()
-  try {
-    const query = `
-      ${user_query}
-      RETURN properties(user) as user
-      `
-    const params = { user_id: user_id.toString() } // Forcing string
-    const { records } = await session.run(query, params)
-
-    if (!records.length) throw `User ${user_id} not found in the database`
-    if (records.length > 1)
-      throw `Multiple users with ID ${user_id} found in the database`
-
-    user = records[0].get("user")
-
-    if (decodedToken.token_id !== user.token_id) throw `Token has been revoked`
-
-    setUserInCache(user)
-    user.cached = false
-
-    res.locals.user = user
-
-    next()
-  } catch (error) {
-    console.error(error)
-    res.status(403).send(error)
-  } finally {
-    session.close()
-  }
-}
-
 export const login = async (
   req: Request,
   res: Response,
@@ -161,4 +101,70 @@ export const login = async (
   } catch (error) {
     next(error)
   }
+}
+
+export const middleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let user_id: string
+  let decodedToken: any
+
+  try {
+    const token = (await retrieve_jwt(req, res)) as string
+    decodedToken = await decode_token(token)
+    user_id = decodedToken.user_id
+    if (!decodedToken.user_id) throw `Token does not contain user_id`
+  } catch (error) {
+    console.error(error)
+    res.status(403).send(error)
+    return
+  }
+
+  let user = await getUserFromCache(user_id)
+
+  const session = driver.session()
+  try {
+    const query = `
+      ${user_query}
+      RETURN properties(user) as user
+      `
+    const params = { user_id: user_id.toString() } // Forcing string
+    const { records } = await session.run(query, params)
+
+    if (!records.length) throw `User ${user_id} not found in the database`
+    if (records.length > 1)
+      throw `Multiple users with ID ${user_id} found in the database`
+
+    user = records[0].get("user")
+
+    user.cached = false
+  } catch (error) {
+    console.error(error)
+    res.status(403).send(error)
+    return
+  } finally {
+    session.close()
+  }
+
+  if (!user.cached) setUserInCache(user)
+
+  // Token checks
+  try {
+    if (decodedToken.token_id !== user.token_id) throw `Token has been revoked`
+
+    if (JWT_EXPIRATION_TIME && JWT_EXPIRATION_TIME !== "infinite") {
+      console.log(`Checking for token expiration`)
+      const now = new Date().getTime() / 1000
+      if (now - decodedToken.iat) throw `Token has expired`
+    }
+  } catch (error) {
+    console.error(error)
+    res.status(403).send(error)
+    return
+  }
+
+  res.locals.user = user
+  next()
 }
