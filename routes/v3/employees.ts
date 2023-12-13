@@ -1,6 +1,5 @@
 import { Router } from "express"
-import password_router from "./password"
-import token_router from "./token"
+import { update_password } from "../../controllers/v3/password"
 import {
   get_users,
   create_user,
@@ -8,14 +7,13 @@ import {
   patch_user,
   delete_user,
 } from "../../controllers/v3/employee"
+import { revokeToken } from "../../controllers/v3/accessTokens"
 
 const router = Router({ mergeParams: true })
 
 router.route("/").get(get_users).post(create_user)
-
 router.route("/:user_id").get(get_user).patch(patch_user).delete(delete_user)
-
-router.use("/:user_id/password", password_router)
-router.use("/:user_id/token", token_router)
+router.route("/:user_id/token").delete(revokeToken).put(revokeToken)
+router.route("/:user_id/password").patch(update_password).put(update_password)
 
 export default router
