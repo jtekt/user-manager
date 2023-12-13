@@ -11,7 +11,7 @@ import {
   removeUserFromCache,
 } from "../../cache"
 
-const { IDENTIFIER_FIELDS = "", JWT_EXPIRATION_TIME = "3600" } = process.env
+const { IDENTIFIER_FIELDS = "", JWT_EXPIRATION_TIME = "infinite" } = process.env
 
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {

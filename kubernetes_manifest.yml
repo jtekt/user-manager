@@ -22,8 +22,6 @@ spec:
               value: employee_number
             - name: IDENTIFIER_FIELDS
               value: employee_number
-            - name: JWT_EXPIRATION_TIME
-              value: infinite
           envFrom:
             - secretRef:
                 name: environment-variables
