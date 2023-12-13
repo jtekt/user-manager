@@ -24,6 +24,7 @@ export const revokeToken = async (
       throw createHttpError(403, `Unauthorized to modify another user`)
     }
 
+    // TODO: try not_before instead
     const query = `
       ${user_query}
       SET user.token_id = randomUUID()
