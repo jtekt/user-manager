@@ -146,7 +146,7 @@ export const middleware = async (
 
     if (JWT_EXPIRATION_TIME && JWT_EXPIRATION_TIME !== "infinite") {
       const now = new Date().getTime() / 1000
-      if (now - iat) throw `Token has expired`
+      if (now - iat > Number(JWT_EXPIRATION_TIME)) throw `Token has expired`
     }
 
     res.locals.user = user
