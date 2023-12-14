@@ -79,7 +79,7 @@ export const middleware = async (
       console.log(
         `[Auth v2] Token has been revoked for user ${user.properties.email_address}`
       )
-      throw `Token has been revoked`
+      // throw `Token has been revoked`
     }
 
     // save user in res locasl so that it can use in other places
