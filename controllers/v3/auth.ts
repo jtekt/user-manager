@@ -143,13 +143,10 @@ export const middleware = async (
 
     // Token checks
     if (tokenIdFromToken !== user.token_id) {
-      console.log(`[Auth v3] Token has been revoked`)
-      console.log({
-        tokenIdFromToken,
-        userTokenId: user.token_id,
-        email: user.email_address,
-      })
-      // throw `Token has been revoked`
+      console.log(
+        `[Auth v3] Token has been revoked for user ${user.email_address}`
+      )
+      throw `Token has been revoked`
     }
 
     if (JWT_EXPIRATION_TIME && JWT_EXPIRATION_TIME !== "infinite") {
