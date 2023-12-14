@@ -61,7 +61,7 @@ export const middleware = async (
 
   try {
     const token = (await retrieve_jwt(req, res)) as string
-    const { user_id, token_id: tokenFromJwt }: any = await decode_token(token)
+    const { user_id, token_id: tokenIdFromJwt }: any = await decode_token(token)
 
     const query = `${user_query} RETURN user`
 
@@ -75,8 +75,12 @@ export const middleware = async (
 
     const user = records[0].get("user")
 
-    if (tokenFromJwt !== user.properties.token_id)
+    if (tokenIdFromJwt !== user.properties.token_id) {
+      console.log(
+        `[Auth v2] Token has been revoked for user ${user.properties.email_address}`
+      )
       throw `Token has been revoked`
+    }
 
     // save user in res locasl so that it can use in other places
     res.locals.user = user
