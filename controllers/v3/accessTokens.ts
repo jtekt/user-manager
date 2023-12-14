@@ -3,7 +3,7 @@ import createHttpError from "http-errors"
 import { removeUserFromCache } from "../../cache"
 import { user_query } from "../../utils/users"
 import { driver } from "../../db"
-
+import { retrieve_jwt, decode_token } from "../../utils/tokens"
 export const revokeToken = async (
   req: Request,
   res: Response,
@@ -45,4 +45,16 @@ export const revokeToken = async (
   } finally {
     session.close()
   }
+}
+
+export const decodeToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { token } = req.body
+  if (!token) throw createHttpError(400, `No token provided`)
+  const decodedToken = decode_token(token)
+  if (!decodedToken) throw createHttpError(403, `Invalid token`)
+  res.send(decodedToken)
 }

@@ -7,13 +7,17 @@ import {
   patch_user,
   delete_user,
 } from "../../controllers/v3/employee"
-import { revokeToken } from "../../controllers/v3/accessTokens"
+import { decodeToken, revokeToken } from "../../controllers/v3/accessTokens"
 
 const router = Router({ mergeParams: true })
 
 router.route("/").get(get_users).post(create_user)
 router.route("/:user_id").get(get_user).patch(patch_user).delete(delete_user)
-router.route("/:user_id/token").delete(revokeToken).put(revokeToken)
 router.route("/:user_id/password").patch(update_password).put(update_password)
+router
+  .route("/:user_id/token")
+  .post(decodeToken)
+  .delete(revokeToken)
+  .put(revokeToken)
 
 export default router

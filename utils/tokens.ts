@@ -11,7 +11,7 @@ if (!JWT_SECRET) throw new Error(`Token secret not set`)
 export const retrieve_jwt = (req: Request, res: Response) =>
   new Promise((resolve, reject) => {
     // Did not need to be a promise
-    const { headers, query }: any = req
+    const { headers, query, body }: any = req
     const jwt =
       headers.authorization?.split(" ")[1] ||
       headers.authorization ||
