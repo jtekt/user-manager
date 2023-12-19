@@ -40,6 +40,7 @@ export const create_user = async (
 
     const password_hashed = await hash_password(password)
 
+    // TODO: allow additional labels via env var
     const query = `
       MERGE (user:User:Employee {email_address: $user_properties.email_address})
 
@@ -181,8 +182,7 @@ export const get_user = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Route to retrieve an employee's data
-  // NOTE: Employee ID is NOT Employee number
+  // Route to retrieve a user's data
   let { user_id } = req.params
   if (user_id === "self") return res.send(res.locals.user)
   if (!user_id) throw createHttpError(400, `user_id not defined`)

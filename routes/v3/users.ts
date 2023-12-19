@@ -6,7 +6,7 @@ import {
   get_user,
   patch_user,
   delete_user,
-} from "../../controllers/v3/employee"
+} from "../../controllers/v3/user"
 import { decodeToken, revokeToken } from "../../controllers/v3/accessTokens"
 
 const router = Router({ mergeParams: true })

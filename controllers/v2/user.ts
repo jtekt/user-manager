@@ -3,10 +3,6 @@ import { get_current_user_id, user_query } from "../../utils/users"
 import { Request, Response, NextFunction } from "express"
 
 export const get_user = (req: Request, res: Response, next: NextFunction) => {
-  // Route to retrieve an employee's data
-
-  // Retrieve employee ID
-  // NOTE: Employee ID is NOT Employee number
   let { user_id } = req.params
   if (user_id === "self") user_id = get_current_user_id(res)
   if (!user_id) return res.status(400).send(`user_id not defined`)
@@ -37,8 +33,6 @@ export const get_user = (req: Request, res: Response, next: NextFunction) => {
 }
 
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
-  // Route to retrieve employees
-
   const { search, ids, employee_numbers } = req.query
 
   let search_query = ""
@@ -87,12 +81,12 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
   session
     .run(query, parameters)
     .then(({ records }: any) => {
-      const employees = records.map((record: any) => record.get("user"))
-      employees.forEach((employee: any) => {
-        delete employee.properties.password_hashed
+      const users = records.map((record: any) => record.get("user"))
+      users.forEach((user: any) => {
+        delete user.properties.password_hashed
       })
 
-      res.send(employees)
+      res.send(users)
       console.log(`[Neo4J] Users queried`)
     })
     .catch(next)

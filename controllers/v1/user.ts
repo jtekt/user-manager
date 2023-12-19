@@ -6,14 +6,10 @@ import { Request, Response, NextFunction } from "express"
 const driver = drivers.v1
 
 // TODO: deprecate this endpoint
-export const get_employee = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  let user_id = req.params.employee_id
+export const getUser = (req: Request, res: Response, next: NextFunction) => {
+  let { user_id } = req.params
   if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `employee_id not defined`)
+  if (!user_id) throw createHttpError(400, `user_id not defined`)
 
   const session = driver.session()
 
@@ -35,52 +31,42 @@ export const get_employee = (
     })
 }
 
-export const get_employees = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  // Route to retrieve employees
-
+export const getUsers = (req: Request, res: Response, next: NextFunction) => {
   let search_query = ""
   if (req.query.search) {
     search_query = `
     // Make a list of the keys of each node
     // Additionally, filter out fields that should not be searched
-    WITH [key IN KEYS(employee) WHERE NOT key IN $exceptions] AS keys, employee
+    WITH [key IN KEYS(user) WHERE NOT key IN $exceptions] AS keys, user
 
     // Unwinding
     UNWIND keys as key
 
     // Filter nodes by looking for properties
-    WITH key, employee
-    WHERE toLower(toString(employee[key])) CONTAINS toLower($search)
+    WITH key, user
+    WHERE toLower(toString(user[key])) CONTAINS toLower($search)
     `
   }
 
   let ids_query = ""
   if (req.query.ids) {
     search_query = `
-    WITH employee
+    WITH user
     UNWIND $ids as id
-    WITH id, employee
-    //WHERE id(employee)=toInteger(id)
-    WHERE employee._id = id
+    WITH id, user
+    WHERE user._id = id
     `
   }
 
   const session = driver.session()
 
   const query = `
-  // Find the employee using the ID
-  MATCH (employee)
-  WHERE employee:Employee OR employee:User
-
+  MATCH (user:User)
 
   ${search_query}
   ${ids_query}
 
-  RETURN DISTINCT employee
+  RETURN DISTINCT user
 
   LIMIT 100
   `
@@ -94,8 +80,8 @@ export const get_employees = (
   session
     .run(query, params)
     .then(({ records }: any) => {
-      const employees = records.map((record: any) => record.get("employee"))
-      res.send(employees)
+      const users = records.map((record: any) => record.get("user"))
+      res.send(users)
     })
     .catch(next)
     .finally(() => {
