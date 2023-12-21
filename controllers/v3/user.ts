@@ -14,8 +14,7 @@ import {
   setUserInCache,
   removeUserFromCache,
 } from "../../cache"
-
-const { SEARCHABLE_FIELDS = "" } = process.env
+import { searchableFields } from "../../config"
 
 export const create_user = async (
   req: Request,
@@ -81,11 +80,6 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     start_index = 0,
     ...filters
   } = req.query
-
-  const searchableFields = ["email_address", "display_name", "_id"]
-
-  if (SEARCHABLE_FIELDS)
-    SEARCHABLE_FIELDS.split(",").forEach((f) => searchableFields.push(f))
 
   const searchArgs = searchableFields
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)

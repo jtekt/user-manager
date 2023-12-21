@@ -8,7 +8,11 @@ import router_v1 from "./v1/index"
 import router_v2 from "./v2/index"
 import router_v3 from "./v3/index"
 import { Request, Response } from "express"
-
+import {
+  identifierFields,
+  jwt_expiration_time,
+  searchableFields,
+} from "../config"
 const router = Router()
 
 router.get("/", (req: Request, res: Response) => {
@@ -31,6 +35,9 @@ router.get("/", (req: Request, res: Response) => {
     redis: {
       url: REDIS_URL,
     },
+    jwt_expiration_time,
+    identifierFields,
+    searchableFields,
   })
 })
 

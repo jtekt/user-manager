@@ -5,23 +5,17 @@ import { authenticateWithLdap } from "../../ldap"
 import { Request, Response, NextFunction } from "express"
 import { driver } from "../../db"
 import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
+import { identifierFields, jwt_expiration_time } from "../../config"
 import {
   getUserFromCache,
   setUserInCache,
   removeUserFromCache,
 } from "../../cache"
 
-const { IDENTIFIER_FIELDS = "", JWT_EXPIRATION_TIME = "infinite" } = process.env
-
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
     // The error handling here is quite bad
     const session = driver.session()
-
-    const identifierFields = ["email_address", "username", "_id"]
-
-    if (IDENTIFIER_FIELDS)
-      IDENTIFIER_FIELDS.split(",").forEach((f) => identifierFields.push(f))
 
     const identificationArgs = identifierFields
       .map((f) => `user.${f} = $identifier`)
@@ -149,9 +143,9 @@ export const middleware = async (
       throw `Token has been revoked`
     }
 
-    if (JWT_EXPIRATION_TIME && JWT_EXPIRATION_TIME !== "infinite") {
+    if (jwt_expiration_time && jwt_expiration_time !== "infinite") {
       const now = new Date().getTime() / 1000
-      if (now - iat > Number(JWT_EXPIRATION_TIME)) throw `Token has expired`
+      if (now - iat > Number(jwt_expiration_time)) throw `Token has expired`
     }
 
     res.locals.user = user
