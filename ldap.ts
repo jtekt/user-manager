@@ -1,11 +1,16 @@
 import { authenticate } from "ldap-authentication"
 
-const { LDAP_HOSTNAME, LDAP_SEARCH_OU, LDAP_USERNAME, LDAP_PASSWORD } =
-  process.env
+export const {
+  LDAP_HOSTNAME,
+  LDAP_SEARCH_OU,
+  LDAP_USERNAME,
+  LDAP_PASSWORD,
+  LDAP_USERNAME_ATTRIBUTE = "mail",
+} = process.env
 
 export const authenticateWithLdap = async (
-  email_address: string,
-  password: string
+  username: string,
+  userPassword: string
 ) => {
   if (!LDAP_HOSTNAME) return false
 
@@ -14,9 +19,9 @@ export const authenticateWithLdap = async (
     adminDn: LDAP_USERNAME,
     adminPassword: LDAP_PASSWORD,
     userSearchBase: LDAP_SEARCH_OU,
-    usernameAttribute: "mail",
-    username: email_address,
-    userPassword: password,
+    usernameAttribute: LDAP_USERNAME_ATTRIBUTE,
+    username,
+    userPassword,
   }
 
   try {

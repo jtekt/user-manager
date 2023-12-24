@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { SMTP_HOST, SMTP_PORT, SMTP_FROM } from "../mail"
-import { hostname as ldapHostname } from "../ldap"
+import { LDAP_HOSTNAME, LDAP_SEARCH_OU, LDAP_USERNAME_ATTRIBUTE } from "../ldap"
 import { REDIS_URL } from "../cache"
 import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db"
 import { version, author } from "../package.json"
@@ -30,7 +30,9 @@ router.get("/", (req: Request, res: Response) => {
       from: SMTP_FROM,
     },
     ldap: {
-      hostname: ldapHostname,
+      hostname: LDAP_HOSTNAME,
+      search_ou: LDAP_SEARCH_OU,
+      username_attribute: LDAP_USERNAME_ATTRIBUTE,
     },
     redis: {
       url: REDIS_URL,

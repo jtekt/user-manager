@@ -2,7 +2,7 @@ import neo4j from "neo4j-driver"
 import { hash_password } from "./utils/passwords"
 
 export const {
-  NEO4J_URL = "bolt://neo4j",
+  NEO4J_URL = "bolt://localhost",
   NEO4J_USERNAME = "neo4j",
   NEO4J_PASSWORD = "neo4j",
   DEFAULT_ADMIN_USERNAME: admin_username = "administrator",

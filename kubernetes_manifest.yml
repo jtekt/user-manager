@@ -18,6 +18,8 @@ spec:
           ports:
             - containerPort: 80
           env:
+            - name: NEO4J_URL
+              value: bolt://neo4j
             - name: ADDITIONAL_SEARCHABLE_FIELDS
               value: employee_number
             - name: ADDITIONAL_IDENTIFIER_FIELDS

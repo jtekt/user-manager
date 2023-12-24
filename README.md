@@ -23,15 +23,27 @@ This is a simple user management and authentication microservice used for intern
 
 ## Environment variables
 
-| variable           | Description                                                         |
-| ------------------ | ------------------------------------------------------------------- |
-| NEO4J_URL          | URL of the Neo4J instance                                           |
-| NEO4J_USERNAME     | Username for the Neo4J instance                                     |
-| NEO4J_PASSWORD     | Password for the Neo4J instance                                     |
-| JWT_SECRET         | Secret used to encrypt JWTs                                         |
-| SMTP_HOST          | SMTP server host for email functions                                |
-| SMTP_PORT          | SMTP port for email functions                                       |
-| SMTP_USERNAME      | SMTP username for email functions                                   |
-| SMTP_PASSWORD      | SMTP password for email functions                                   |
-| SMTP_FROM          | Sender e-mail address for email functions                           |
-| PASSWORD_RESET_URL | URL to which users are directed to in order to reset their password |
+| variable                     | Description                                                           | Default          |
+| ---------------------------- | --------------------------------------------------------------------- | ---------------- |
+| APP_PORT                     | Port used by Express                                                  | 80               |
+| NEO4J_URL                    | URL of the Neo4J instance                                             | bolt://localhost |
+| NEO4J_USERNAME               | Username for the Neo4J instance                                       | neo4j            |
+| NEO4J_PASSWORD               | Password for the Neo4J instance                                       | neo4j            |
+| DEFAULT_ADMIN_USERNAME       | Username administrator account                                        | administrator    |
+| DEFAULT_ADMIN_PASSWORD       | Password administrator account                                        | administrator    |
+| JWT_SECRET                   | Secret used to encrypt JWTs                                           |                  |
+| JWT_EXPIRATION_TIME          | Life time of a JWT                                                    | infinite         |
+| SMTP_HOST                    | SMTP server host for email functions                                  |                  |
+| SMTP_PORT                    | SMTP port for email functions                                         |                  |
+| SMTP_USERNAME                | SMTP username for email functions                                     |                  |
+| SMTP_PASSWORD                | SMTP password for email functions                                     |                  |
+| SMTP_FROM                    | Sender e-mail address for email functions                             |                  |
+| PASSWORD_RESET_URL           | URL to which users are directed to in order to reset their password   |                  |
+| LDAP_HOSTNAME                | Hosatname for the LDAP server                                         |                  |
+| LDAP_SEARCH_OU               | User search base                                                      |                  |
+| LDAP_USERNAME                | Username for LDAP queries                                             |                  |
+| LDAP_PASSWORD                | Password for LDAP queries                                             |                  |
+| LDAP_USERNAME_ATTRIBUTE      | Username attribute for user queries                                   | mail             |
+| REDIS_URL                    | URL of the Redis cache, leave empty to disable caching                |                  |
+| ADDITIONAL_SEARCHABLE_FIELDS | Comma separated list of fields to query users with                    |                  |
+| ADDITIONAL_IDENTIFIER_FIELDS | Comma separated list of fields users can use as identiufier for login |                  |
