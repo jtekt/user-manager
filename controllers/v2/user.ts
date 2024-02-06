@@ -33,7 +33,7 @@ export const get_user = (req: Request, res: Response, next: NextFunction) => {
 }
 
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
-  const { search, ids, employee_numbers } = req.query
+  const { search, ids } = req.query
 
   let search_query = ""
   if (search) {
@@ -74,7 +74,6 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     exceptions: ["password_hashed"],
     search,
     ids,
-    employee_numbers,
   }
 
   const session = driver.session()
