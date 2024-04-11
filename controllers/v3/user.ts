@@ -78,6 +78,8 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     employee_numbers, // TODO: this is specific to this company
     batch_size = 100,
     start_index = 0,
+    sort = "display_name",
+    order = "ASC",
     ...filters
   } = req.query
 
@@ -119,6 +121,8 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     ${ids ? ids_query : ""}
     ${employee_numbers ? employee_numbers_query : ""}
 
+    WITH user ORDER BY user[$order_by] ${order === "ASC" ? "ASC" : "DESC"}
+
     // Aggregation
     WITH
       COLLECT(DISTINCT properties(user)) as users,
@@ -142,6 +146,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     start_index,
     batch_size,
     filters,
+    sort,
   }
 
   const session = driver.session()
