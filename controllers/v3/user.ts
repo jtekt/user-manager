@@ -121,7 +121,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     ${ids ? ids_query : ""}
     ${employee_numbers ? employee_numbers_query : ""}
 
-    WITH user ORDER BY user[$order_by] ${order === "ASC" ? "ASC" : "DESC"}
+    WITH user ORDER BY user[$sort] ${order === "ASC" ? "ASC" : "DESC"}
 
     // Aggregation
     WITH
