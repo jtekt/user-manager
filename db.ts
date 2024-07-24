@@ -101,6 +101,11 @@ const create_admin_if_not_exists = async () => {
   }
 }
 
+const allowedConstraintErrorCodes = [
+  "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists",
+  "Neo.ClientError.Schema.ConstraintAlreadyExists",
+]
+
 const create_id_constraint = async () => {
   const session = driver.session()
 
@@ -109,8 +114,9 @@ const create_id_constraint = async () => {
     await session.run(`CREATE CONSTRAINT FOR (u:User) REQUIRE u._id IS UNIQUE`)
     console.log(`[Neo4J] Created ID constraint`)
   } catch (error: any) {
-    if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
-      throw error
+    if (allowedConstraintErrorCodes.includes(error.code))
+      console.log(`[Neo4j] Constraint already exists`)
+    else throw error
   } finally {
     session.close()
   }
@@ -126,8 +132,9 @@ const create_username_constraint = async () => {
     )
     console.log(`[Neo4J] Created username constraints`)
   } catch (error: any) {
-    if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
-      throw error
+    if (allowedConstraintErrorCodes.includes(error.code))
+      console.log(`[Neo4j] Constraint already exists`)
+    else throw error
   } finally {
     session.close()
   }
