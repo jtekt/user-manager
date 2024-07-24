@@ -106,10 +106,13 @@ const create_constraints = async () => {
 
   try {
     await session.run(`CREATE CONSTRAINT FOR (u:User) REQUIRE u._id IS UNIQUE`)
+    // await session.run(
+    //   `CREATE CONSTRAINT FOR (u:User) REQUIRE u.email_address IS UNIQUE`
+    // )
     await session.run(
-      `CREATE CONSTRAINT FOR (u:User) REQUIRE u.email_address IS UNIQUE`
+      `CREATE CONSTRAINT FOR (u:User) REQUIRE u.username IS UNIQUE`
     )
-    // await session.run(`CREATE CONSTRAINT ON (u:User) ASSERT u.username IS UNIQUE`)
+
     console.log(`[Neo4J] Created constraints`)
   } catch (error: any) {
     if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
