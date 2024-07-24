@@ -101,19 +101,30 @@ const create_admin_if_not_exists = async () => {
   }
 }
 
-const create_constraints = async () => {
+const create_id_constraint = async () => {
   const session = driver.session()
 
   try {
+    console.log(`[Neo4J] Creating ID constraint...`)
     await session.run(`CREATE CONSTRAINT FOR (u:User) REQUIRE u._id IS UNIQUE`)
-    // await session.run(
-    //   `CREATE CONSTRAINT FOR (u:User) REQUIRE u.email_address IS UNIQUE`
-    // )
+    console.log(`[Neo4J] Created ID constraint`)
+  } catch (error: any) {
+    if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
+      throw error
+  } finally {
+    session.close()
+  }
+}
+
+const create_username_constraint = async () => {
+  const session = driver.session()
+
+  try {
+    console.log(`[Neo4J] Creating username constraint...`)
     await session.run(
       `CREATE CONSTRAINT FOR (u:User) REQUIRE u.username IS UNIQUE`
     )
-
-    console.log(`[Neo4J] Created constraints`)
+    console.log(`[Neo4J] Created username constraints`)
   } catch (error: any) {
     if (error.code !== "Neo.ClientError.Schema.ConstraintAlreadyExists")
       throw error
@@ -130,7 +141,8 @@ export const init = async () => {
       console.log("[Neo4J] Initializing DB")
       await create_admin_if_not_exists()
       await set_ids_to_nodes_without_ids()
-      await create_constraints()
+      await create_id_constraint()
+      await create_username_constraint()
       console.error(`[Neo4J] DB initialized`)
     } catch (error) {
       console.log(error)
