@@ -144,16 +144,12 @@ export const init = async () => {
   if (await get_connection_status()) {
     connected = true
 
-    try {
-      console.log("[Neo4J] Initializing DB")
-      await create_admin_if_not_exists()
-      await set_ids_to_nodes_without_ids()
-      await create_id_constraint()
-      await create_username_constraint()
-      console.error(`[Neo4J] DB initialized`)
-    } catch (error) {
-      console.log(error)
-    }
+    console.log("[Neo4J] Initializing DB")
+    await create_admin_if_not_exists()
+    await set_ids_to_nodes_without_ids()
+    await create_id_constraint()
+    await create_username_constraint()
+    console.error(`[Neo4J] DB initialized`)
   } else {
     setTimeout(init, 10000)
   }

@@ -15,8 +15,12 @@ spec:
       containers:
         - name: ${APPLICATION_NAME}
           image: ${CONTAINER_IMAGE_TAGGED}
-          ports:
-            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
           env:
             - name: NEO4J_URL
               value: bolt://neo4j
