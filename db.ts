@@ -106,37 +106,28 @@ const allowedConstraintErrorCodes = [
   "Neo.ClientError.Schema.ConstraintAlreadyExists",
 ]
 
-const create_id_constraint = async () => {
-  const session = driver.session()
+const create_constraints = async (properties: string[]) => {
+  const allowedConstraintErrorCodes = [
+    "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists",
+    "Neo.ClientError.Schema.ConstraintAlreadyExists",
+  ]
 
-  try {
-    console.log(`[Neo4J] Creating ID constraint...`)
-    await session.run(`CREATE CONSTRAINT FOR (u:User) REQUIRE u._id IS UNIQUE`)
-    console.log(`[Neo4J] Created ID constraint`)
-  } catch (error: any) {
-    if (allowedConstraintErrorCodes.includes(error.code))
-      console.log(`[Neo4j] Constraint already exists`)
-    else throw error
-  } finally {
-    session.close()
-  }
-}
+  for await (const prop of properties) {
+    const session = driver.session()
 
-const create_username_constraint = async () => {
-  const session = driver.session()
-
-  try {
-    console.log(`[Neo4J] Creating username constraint...`)
-    await session.run(
-      `CREATE CONSTRAINT FOR (u:User) REQUIRE u.username IS UNIQUE`
-    )
-    console.log(`[Neo4J] Created username constraints`)
-  } catch (error: any) {
-    if (allowedConstraintErrorCodes.includes(error.code))
-      console.log(`[Neo4j] Constraint already exists`)
-    else throw error
-  } finally {
-    session.close()
+    try {
+      console.log(`[Neo4J] Creating ${prop} constraint...`)
+      await session.run(
+        `CREATE CONSTRAINT FOR (u:User) REQUIRE u.${prop} IS UNIQUE`
+      )
+      console.log(`[Neo4J] Created ${prop} constraints`)
+    } catch (error: any) {
+      if (allowedConstraintErrorCodes.includes(error.code))
+        console.log(`[Neo4j] Constraint for ${prop} already exists`)
+      else throw error
+    } finally {
+      session.close()
+    }
   }
 }
 
@@ -147,8 +138,7 @@ export const init = async () => {
     console.log("[Neo4J] Initializing DB")
     await create_admin_if_not_exists()
     await set_ids_to_nodes_without_ids()
-    await create_id_constraint()
-    await create_username_constraint()
+    await create_constraints(["_id", "username"])
     console.error(`[Neo4J] DB initialized`)
   } else {
     setTimeout(init, 10000)
