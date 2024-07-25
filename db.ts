@@ -101,11 +101,6 @@ const create_admin_if_not_exists = async () => {
   }
 }
 
-const allowedConstraintErrorCodes = [
-  "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists",
-  "Neo.ClientError.Schema.ConstraintAlreadyExists",
-]
-
 const create_constraints = async (properties: string[]) => {
   const allowedConstraintErrorCodes = [
     "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists",
