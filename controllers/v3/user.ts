@@ -88,14 +88,15 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     .join(" OR ")
 
   // TODO: unwind if array
-  const filtering_query = `
-    UNWIND KEYS($filters) as filterKey
-    // This WITH is needed to isolate from previous MATCH
-    WITH filterKey
+  const dynamicFilters = Object.keys(filters)
+    .map((key) => {
+      return `UNWIND $${key} as ${key}
+     // This WITH is needed to isolate from previous MATCH
+    WITH ${key}
     // NOTE: This overrides previous MATCH
-    OPTIONAL MATCH (user:User)
-    WHERE user[filterKey] = $filters[filterKey]
-      `
+    OPTIONAL MATCH (user:User {${key}: ${key}})`
+    })
+    .join("\n\n ");
 
   const ids_query = `
     UNWIND $ids as id
@@ -117,7 +118,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const query = `
     OPTIONAL MATCH (user:User)
     WHERE ${searchArgs}
-    ${Object.keys(filters).length ? filtering_query : ""}
+    ${dynamicFilters ? dynamicFilters : ""}
     ${ids ? ids_query : ""}
     ${employee_numbers ? employee_numbers_query : ""}
 
@@ -145,7 +146,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     employee_numbers,
     start_index,
     batch_size,
-    filters,
+    ...filters,
     sort,
   }
 
