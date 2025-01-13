@@ -3,7 +3,7 @@ import createHttpError from "http-errors"
 import { removeUserFromCache } from "../../cache"
 import { user_query } from "../../utils/users"
 import { driver } from "../../db"
-import { decode_token } from "../../utils/tokens"
+import { verify_token } from "../../utils/tokens"
 export const revokeToken = async (
   req: Request,
   res: Response,
@@ -53,7 +53,7 @@ export const decodeToken = async (
 ) => {
   const { token } = req.body
   if (!token) throw createHttpError(400, `No token provided`)
-  const decodedToken = decode_token(token)
+  const decodedToken = verify_token(token)
   if (!decodedToken) throw createHttpError(403, `Invalid token`)
   res.send(decodedToken)
 }

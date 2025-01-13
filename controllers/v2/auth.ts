@@ -5,7 +5,7 @@ import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap"
 import { register_last_login, user_query } from "../../utils/users"
 import { Request, Response, NextFunction } from "express"
 import { identifierFields } from "../../config"
-import { retrieve_jwt, decode_token, generate_token } from "../../utils/tokens"
+import { retrieve_jwt, verify_token, generate_token } from "../../utils/tokens"
 
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
@@ -54,7 +54,7 @@ export const middleware = async (
 
   try {
     const token = (await retrieve_jwt(req, res)) as string
-    const { user_id, token_id: tokenIdFromJwt }: any = await decode_token(token)
+    const { user_id, token_id: tokenIdFromJwt }: any = await verify_token(token)
 
     const query = `${user_query} RETURN user`
 

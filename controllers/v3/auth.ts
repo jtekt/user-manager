@@ -141,7 +141,7 @@ const performLegacyAuth = async (
   const token = (await retrieve_jwt(req, res)) as string;
   const decodedToken = (await verify_token(token)) as any;
   const { user_id, token_id: tokenIdFromToken, iat } = decodedToken;
-  if (!user_id) throw new Error("Token does not contain user_id");
+  if (!user_id) throw `Token does not contain user_id`;
 
   let user = await getUserFromCache(user_id);
 
@@ -155,29 +155,35 @@ const performLegacyAuth = async (
       const params = { user_id: user_id.toString() };
       const { records } = await session.run(query, params);
 
-      if (records.length !== 1) {
-        throw new Error(records.length === 0
-          ? `User ${user_id} not found in the database`
-          : `Multiple users with ID ${user_id} found in the database`
-        );
-      }
+      if (!records.length) throw `User ${user_id} not found in the database`
+      if (records.length > 1)
+        throw `Multiple users with ID ${user_id} found in the database`
 
-      user = records[0].get("user");
-      setUserInCache(user);
+      user = records[0].get("user")
+
+      setUserInCache(user)
       user.cached = false;
+    } catch (error) {
+      throw error
     } finally {
-      session.close();
+      session.close()
     }
+
   }
 
+  if (!user) throw `User does not exist`
+
+  // Token checks
   if (tokenIdFromToken !== user.token_id) {
-    console.log(`[Auth v3] Token has been revoked for user ${user.email_address}`);
-    throw new Error("Token has been revoked");
+    console.log(
+      `[Auth v3] Token has been revoked for user ${user.email_address}`
+    )
+    throw `Token has been revoked`
   }
 
   if (jwt_expiration_time && jwt_expiration_time !== "infinite") {
-    const now = Date.now() / 1000;
-    if (now - iat > Number(jwt_expiration_time)) throw new Error("Token has expired");
+    const now = new Date().getTime() / 1000
+    if (now - iat > Number(jwt_expiration_time)) throw `Token has expired`
   }
 
   return user;
@@ -189,15 +195,15 @@ const performOidcAuth = async (
   try {
     const token = (await retrieve_jwt(req, res)) as string;
     const decoded = decode_token(token) as any;
-    if (!decoded) throw new Error(`Decoded token is null`)
+    if (!decoded) throw `Decoded token is null`;
 
     const kid = decoded.header?.kid
-    if (!kid) throw new Error("Missing token kid")
+    if (!kid) throw "Missing token kid"
     const key = await jwksClient!.getSigningKey(kid)
     let user = (await verify_token_oidc(token, key.getPublicKey())) as any;
 
     return user;
   } catch (err) {
-    throw new Error("Failed to retrieve or verify OIDC token: " + err);
+    throw "Failed to retrieve or verify OIDC token: " + err;
   }
 };
