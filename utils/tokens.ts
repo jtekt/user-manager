@@ -37,10 +37,20 @@ export const generate_token = (user: any) =>
     })
   })
 
-export const decode_token = (token: string) =>
+export const verify_token = (token: string) =>
   new Promise((resolve, reject) => {
     jwt.verify(token, JWT_SECRET, (error: any, decoded_token: any) => {
       if (error) return reject(createHttpError(403, `Invalid JWT`))
       resolve(decoded_token)
     })
   })
+
+export const verify_token_oidc = (token: string, key: string) =>
+  new Promise((resolve, reject) => {
+    jwt.verify(token, key, (error: any, decoded_token: any) => {
+      if (error) return reject(createHttpError(403, `Invalid JWT OIDC`))
+      resolve(decoded_token)
+    })
+  })
+
+export const decode_token = (token: string) => jwt.decode(token, { complete: true })
