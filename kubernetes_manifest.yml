@@ -25,9 +25,11 @@ spec:
             - name: NEO4J_URL
               value: bolt://neo4j
             - name: ADDITIONAL_SEARCHABLE_FIELDS
-              value: employee_number
+              value: employee_number,username
             - name: ADDITIONAL_IDENTIFIER_FIELDS
-              value: employee_number
+              value: employee_number,username
+            - name: OIDC_JWKS_URI
+              value: http://10.115.1.100:30416/realms/jtekt/protocol/openid-connect/certs
           envFrom:
             - secretRef:
                 name: environment-variables
