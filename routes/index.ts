@@ -11,6 +11,7 @@ import { Request, Response } from "express"
 import {
   identifierFields,
   jwt_expiration_time,
+  oidc_jwks_uri,
   searchableFields,
 } from "../config"
 const router = Router()
@@ -36,6 +37,9 @@ router.get("/", (req: Request, res: Response) => {
     },
     redis: {
       url: REDIS_URL,
+    },
+    auth: {
+      oidc_jwks_uri: oidc_jwks_uri,
     },
     jwt_expiration_time,
     identifierFields,
