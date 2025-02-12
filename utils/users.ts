@@ -1,3 +1,4 @@
+import { setUserInCache } from "../cache"
 import { driver } from "../db"
 import { Response } from "express"
 
@@ -31,4 +32,26 @@ export const register_last_login = async (user: any) => {
   } finally {
     session.close()
   }
+}
+
+export const get_auth_user = async (query: string, params: any) => {
+  const session = driver.session();
+  let user: any;
+  try {
+    const { records } = await session.run(query, params);
+
+    if (!records.length) throw `User ${params} not found in the database`
+    if (records.length > 1)
+      throw `Multiple users with params ${params} found in the database`
+
+    user = records[0].get("user")
+    setUserInCache(user)
+    user.cached = false;
+  } catch (error) {
+    console.log(`error: ${error}`)
+    throw error
+  } finally {
+    session.close()
+  }
+  return user;
 }
