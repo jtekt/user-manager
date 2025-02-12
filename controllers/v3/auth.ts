@@ -1,6 +1,6 @@
 import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
-import { register_last_login, user_query } from "../../utils/users"
+import { get_auth_user, register_last_login, user_query } from "../../utils/users"
 import { authenticateWithLdap } from "../../ldap"
 import { Request, Response, NextFunction } from "express"
 import { driver } from "../../db"
@@ -9,9 +9,9 @@ import { identifierFields, jwt_expiration_time, oidc_jwks_uri } from "../../conf
 import createJwksClient from "jwks-rsa"
 import {
   getUserFromCache,
-  setUserInCache,
   removeUserFromCache,
 } from "../../cache"
+import { authMiddlewareChainer } from "@moreillon/express-auth-middleware-chainer"
 
 let jwksClient: ReturnType<typeof createJwksClient> | null = null;
 
@@ -109,35 +109,9 @@ export const login = async (
   }
 }
 
-export const middleware = async (
+const legacyAuthMiddleware = async (
   req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-
-  try {
-    res.locals.user = await performLegacyAuth(req, res);
-    return next();
-  } catch (legacyError) {
-    if (!jwksClient) {
-      console.error("Legacy auth failed", legacyError);
-      return res.status(403).send(legacyError);
-    }
-
-    try {
-      res.locals.user = await performOidcAuth(req, res);
-      return next();
-    } catch (oidcError) {
-      console.error("OIDC auth failed", oidcError);
-      return res.status(403).send(oidcError);
-    }
-  }
-}
-
-
-const performLegacyAuth = async (
-  req: Request,
-  res: Response) => {
+  res: Response, next: NextFunction) => {
   const token = (await retrieve_jwt(req, res)) as string;
   const decodedToken = (await verify_token(token)) as any;
   const { user_id, token_id: tokenIdFromToken, iat } = decodedToken;
@@ -153,16 +127,7 @@ const performLegacyAuth = async (
           RETURN properties(user) as user
         `;
       const params = { user_id: user_id.toString() };
-      const { records } = await session.run(query, params);
-
-      if (!records.length) throw `User ${user_id} not found in the database`
-      if (records.length > 1)
-        throw `Multiple users with ID ${user_id} found in the database`
-
-      user = records[0].get("user")
-
-      setUserInCache(user)
-      user.cached = false;
+      user = await get_auth_user(query, params);
     } catch (error) {
       throw error
     } finally {
@@ -186,12 +151,13 @@ const performLegacyAuth = async (
     if (now - iat > Number(jwt_expiration_time)) throw `Token has expired`
   }
 
-  return user;
+  res.locals.user = user;
+  next();
 };
 
-const performOidcAuth = async (
+const oidcAuthMiddle = async (
   req: Request,
-  res: Response) => {
+  res: Response, next: NextFunction) => {
   try {
     const token = (await retrieve_jwt(req, res)) as string;
     const decoded = decode_token(token) as any;
@@ -200,10 +166,36 @@ const performOidcAuth = async (
     const kid = decoded.header?.kid
     if (!kid) throw "Missing token kid"
     const key = await jwksClient!.getSigningKey(kid)
-    let user = (await verify_token_oidc(token, key.getPublicKey())) as any;
+    let keycloakUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
 
-    return user;
+    //  TODO: Use an env variable on caching
+    // let user = await getUserFromCache(keycloakUser.preferred_username);
+
+    let user: any;
+    // if (!user) {
+    try {
+      const username_filter = ` WHERE user.username = $username `
+      const user_query_username = ` MATCH (user:User) ${username_filter}`
+      const query = `
+        ${user_query_username}
+        RETURN properties(user) as user
+      `;
+      const params = { username: keycloakUser.preferred_username };
+      user = await get_auth_user(query, params);
+    } catch (error) {
+      console.log(`error: ${error}`)
+      throw error
+    }
+
+    // }
+    res.locals.user = user;
+    next()
   } catch (err) {
     throw "Failed to retrieve or verify OIDC token: " + err;
   }
 };
+
+export const middlewareChain = authMiddlewareChainer([
+  legacyAuthMiddleware,
+  oidcAuthMiddle,
+])
