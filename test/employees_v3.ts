@@ -31,7 +31,7 @@ describe("/v3/users", () => {
     it("Should not allow unauthenticated access to users", async () => {
       const { status } = await request(app).get("/v3/users/")
 
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
 
     it("Should allow authenticated users to query users", async () => {
@@ -68,7 +68,7 @@ describe("/v3/users", () => {
 
     it("Should not allow unauthenticated user creation", async () => {
       const { status } = await request(app).post("/v3/users/").send(new_user)
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
   })
 
@@ -85,14 +85,14 @@ describe("/v3/users", () => {
 
     it("Should not allow unauthenticated user creation", async () => {
       const { status } = await request(app).post("/v3/users/").send(new_user)
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
   })
 
   describe("GET /v3/users/:user_id", () => {
     it("Should not allow unauthenticated access to user", async () => {
       const { status } = await request(app).get(`/v3/users/${user_id}`)
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
 
     it("Should allow authenticated users to query the created user", async () => {
@@ -162,7 +162,7 @@ describe("/v3/users", () => {
   describe("DELETE /v3/users/:user_id", () => {
     it("Should not allow unauthenticated user deletion", async () => {
       const { status } = await request(app).delete(`/v3/users/${user_id}`)
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
 
     it("Should allow user deletion", async () => {
