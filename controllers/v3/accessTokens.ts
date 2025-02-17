@@ -37,7 +37,7 @@ export const revokeToken = async (
     delete user.password_hashed
 
     console.log(`[Neo4J] Token of user ${user_id} revoked`)
-    removeUserFromCache(user_id)
+    removeUserFromCache(user)
     res.send(user)
   } catch (error) {
     next(error)

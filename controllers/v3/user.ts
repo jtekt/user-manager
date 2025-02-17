@@ -265,7 +265,7 @@ export const patch_user = async (
 
     const user = records[0].get("user")
 
-    removeUserFromCache(user_id)
+    removeUserFromCache(user)
 
     res.send(user)
     console.log(`User ${user_id} patched`)
@@ -293,8 +293,9 @@ export const delete_user = (
 
   const query = `
     ${user_query}
+    WITH user, properties(user) AS userData
     DETACH DELETE (user)
-    RETURN $user_id as user_id`
+    RETURN userData AS user`
 
   session
     .run(query, { user_id })
@@ -302,7 +303,8 @@ export const delete_user = (
       if (!records.length)
         throw createHttpError(404, `User ${user_id} not found`)
       console.log(`User ${user_id} deleted`)
-      removeUserFromCache(user_id)
+      const user = records[0].get("user")
+      removeUserFromCache(user)
       res.send({ user_id })
     })
     .catch(next)
