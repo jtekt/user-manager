@@ -155,47 +155,49 @@ const legacyAuthMiddleware = async (
   next();
 };
 
-const oidcAuthMiddle = async (
-  req: Request,
-  res: Response, next: NextFunction) => {
-  try {
-    const token = (await retrieve_jwt(req, res)) as string;
-    const decoded = decode_token(token) as any;
-    if (!decoded) throw `Decoded token is null`;
+const oidcAuthMiddlewareFactory = () => {
+  initializeOidcAuth();
 
-    const kid = decoded.header?.kid
-    if (!kid) throw "Missing token kid"
-    const key = await jwksClient!.getSigningKey(kid)
-    let keycloakUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
-
-    //  TODO: Use an env variable on caching
-    // let user = await getUserFromCache(keycloakUser.preferred_username);
-
-    let user: any;
-    // if (!user) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const username_filter = ` WHERE user.username = $username `
-      const user_query_username = ` MATCH (user:User) ${username_filter}`
-      const query = `
+      const token = (await retrieve_jwt(req, res)) as string;
+      const decoded = decode_token(token) as any;
+      if (!decoded) throw `Decoded token is null`;
+
+      const kid = decoded.header?.kid
+      if (!kid) throw "Missing token kid"
+      const key = await jwksClient!.getSigningKey(kid)
+      let keycloakUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
+
+      //  TODO: Use an env variable on caching
+      // let user = await getUserFromCache(keycloakUser.preferred_username);
+
+      let user: any;
+      // if (!user) {
+      try {
+        const username_filter = ` WHERE user.username = $username `
+        const user_query_username = ` MATCH (user:User) ${username_filter}`
+        const query = `
         ${user_query_username}
         RETURN properties(user) as user
       `;
-      const params = { username: keycloakUser.preferred_username };
-      user = await get_auth_user(query, params);
-    } catch (error) {
-      console.log(`error: ${error}`)
-      throw error
-    }
+        const params = { username: keycloakUser.preferred_username };
+        user = await get_auth_user(query, params);
+      } catch (error) {
+        console.log(`error: ${error}`)
+        throw error
+      }
 
-    // }
-    res.locals.user = user;
-    next()
-  } catch (err) {
-    throw "Failed to retrieve or verify OIDC token: " + err;
+      // }
+      res.locals.user = user;
+      next()
+    } catch (err) {
+      throw "Failed to retrieve or verify OIDC token: " + err;
+    }
   }
 };
 
 export const middlewareChain = authMiddlewareChainer([
   legacyAuthMiddleware,
-  oidcAuthMiddle,
+  oidcAuthMiddlewareFactory(),
 ])
