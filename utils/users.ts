@@ -44,8 +44,8 @@ export const get_auth_user = async (query: string, params: any) => {
     if (!records.length) throw `User ${params} not found in the database`
     if (records.length > 1)
       throw `Multiple users with params ${params} found in the database`
-    user.cached = false;
     user = records[0].get("user")
+    user.cached = false;
   } catch (error) {
     console.log(`error: ${error}`)
     throw error

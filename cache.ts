@@ -1,5 +1,5 @@
 import { createClient } from "redis"
-import { cacheIdentifierFields } from "./config"
+import { identifierFields } from "./config"
 
 export const { REDIS_URL } = process.env
 
@@ -41,7 +41,7 @@ export const setUserInCache = async (user: any, field: string = "_id") => {
 // Loops all the cacheIdentifierFields and removes the user from cache
 export const removeUserFromCache = (user: any) => {
   if (!client) return
-  cacheIdentifierFields.forEach(async field => {
+  identifierFields.forEach(async field => {
     const identifier = user[field]
     if (identifier) {
       console.log(`[Cache] Removing user ${user[field]} from cache`)
