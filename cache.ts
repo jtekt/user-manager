@@ -1,4 +1,5 @@
 import { createClient } from "redis"
+import { identifierFields } from "./config"
 
 export const { REDIS_URL } = process.env
 
@@ -26,14 +27,25 @@ export const getUserFromCache = async (user_id: string) => {
   return { ...JSON.parse(userFromCache), cached: true }
 }
 
-export const setUserInCache = async (user: any) => {
+export const setUserInCache = async (user: any, field: string = "_id") => {
   if (!client) return
-  await client.set(`user:${user._id}`, JSON.stringify(user), {
-    EX: 60 * 60 * 12,
-  })
+  const identifier = user[field]
+  if (field) {
+    console.log(`[Cache] Setting user using ${field}: ${identifier} in cache`)
+    await client.set(`user:${identifier}`, JSON.stringify(user), {
+      EX: 60 * 60 * 12,
+    })
+  }
 }
 
-export const removeUserFromCache = async (user_id: string) => {
+// Loops all the cacheIdentifierFields and removes the user from cache
+export const removeUserFromCache = (user: any) => {
   if (!client) return
-  await client.del(`user:${user_id}`)
+  identifierFields.forEach(async field => {
+    const identifier = user[field]
+    if (identifier) {
+      console.log(`[Cache] Removing user ${user[field]} from cache`)
+      await client.del(`user:${user[field]}`)
+    }
+  });
 }

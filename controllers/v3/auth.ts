@@ -1,6 +1,6 @@
 import createHttpError from "http-errors"
 import { compare_password } from "../../utils/passwords"
-import { get_auth_user, register_last_login, user_query } from "../../utils/users"
+import { get_auth_user, oidc_user_query, register_last_login, user_query } from "../../utils/users"
 import { authenticateWithLdap } from "../../ldap"
 import { Request, Response, NextFunction } from "express"
 import { driver } from "../../db"
@@ -10,6 +10,7 @@ import createJwksClient from "jwks-rsa"
 import {
   getUserFromCache,
   removeUserFromCache,
+  setUserInCache,
 } from "../../cache"
 import { authMiddlewareChainer } from "@moreillon/express-auth-middleware-chainer"
 
@@ -98,7 +99,7 @@ export const login = async (
     const jwt = await generate_token(user)
 
     register_last_login(user)
-    removeUserFromCache(user._id)
+    removeUserFromCache(user)
 
     console.log(`[Auth] Successful login from user ${userIdentifier}`)
 
@@ -128,6 +129,7 @@ const legacyAuthMiddleware = async (
         `;
       const params = { user_id: user_id.toString() };
       user = await get_auth_user(query, params);
+      setUserInCache(user)
     } catch (error) {
       throw error
     } finally {
@@ -155,47 +157,47 @@ const legacyAuthMiddleware = async (
   next();
 };
 
-const oidcAuthMiddle = async (
-  req: Request,
-  res: Response, next: NextFunction) => {
-  try {
-    const token = (await retrieve_jwt(req, res)) as string;
-    const decoded = decode_token(token) as any;
-    if (!decoded) throw `Decoded token is null`;
+const oidcAuthMiddlewareFactory = () => {
+  initializeOidcAuth();
 
-    const kid = decoded.header?.kid
-    if (!kid) throw "Missing token kid"
-    const key = await jwksClient!.getSigningKey(kid)
-    let keycloakUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
-
-    //  TODO: Use an env variable on caching
-    // let user = await getUserFromCache(keycloakUser.preferred_username);
-
-    let user: any;
-    // if (!user) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const username_filter = ` WHERE user.username = $username `
-      const user_query_username = ` MATCH (user:User) ${username_filter}`
-      const query = `
-        ${user_query_username}
+      const token = (await retrieve_jwt(req, res)) as string;
+      const decoded = decode_token(token) as any;
+      if (!decoded) throw `Decoded token is null`;
+
+      const kid = decoded.header?.kid
+      if (!kid) throw "Missing token kid"
+      const key = await jwksClient!.getSigningKey(kid)
+      let keycloakUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
+
+      // Uses the preferred_username field as the identifier for OIDC
+      let user = await getUserFromCache(keycloakUser.preferred_username);
+
+      if (!user) {
+        try {
+          const query = `
+        ${oidc_user_query}
         RETURN properties(user) as user
       `;
-      const params = { username: keycloakUser.preferred_username };
-      user = await get_auth_user(query, params);
-    } catch (error) {
-      console.log(`error: ${error}`)
-      throw error
-    }
+          const params = { identifier: keycloakUser.preferred_username };
+          user = await get_auth_user(query, params);
+          setUserInCache(user, "username")
+        } catch (error) {
+          console.log(`error: ${error}`)
+          throw error
+        }
 
-    // }
-    res.locals.user = user;
-    next()
-  } catch (err) {
-    throw "Failed to retrieve or verify OIDC token: " + err;
+      }
+      res.locals.user = user;
+      next()
+    } catch (err) {
+      throw "Failed to retrieve or verify OIDC token: " + err;
+    }
   }
 };
 
 export const middlewareChain = authMiddlewareChainer([
   legacyAuthMiddleware,
-  oidcAuthMiddle,
+  oidcAuthMiddlewareFactory(),
 ])
