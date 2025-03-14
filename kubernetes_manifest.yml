@@ -22,8 +22,8 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
           env:
-            - name: NEO4J_URL
-              value: bolt://neo4j
+            # - name: NEO4J_URL
+            #   value: bolt://neo4j
             - name: ADDITIONAL_SEARCHABLE_FIELDS
               value: employee_number,username
             - name: ADDITIONAL_IDENTIFIER_FIELDS
