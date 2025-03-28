@@ -51,8 +51,7 @@ export const middleware = async (
     );
 
     const query = ` MATCH (user:User { _id: $_id }) RETURN user`;
-    const identifier = user_id.toString();
-    const params = { identifier }; // Forcing string
+    const params = { _id: user_id.toString() }; // Forcing string
     const { records } = await session.run(query, params);
 
     if (!records.length)
