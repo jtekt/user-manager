@@ -1,6 +1,6 @@
 const {
   ADDITIONAL_LOGIN_IDENTIFIER_FIELDS = "",
-  ADDITIONAL_IDENTIFIER_FIELDS = "",
+  ADDITIONAL_USER_QUERY_IDENTIFIER_FIELDS = "",
   JWT_EXPIRATION_TIME = "infinite",
   ADDITIONAL_SEARCHABLE_FIELDS = "",
   OIDC_JWKS_URI = "",
@@ -20,8 +20,8 @@ if (ADDITIONAL_LOGIN_IDENTIFIER_FIELDS)
 
 // Used as user_id in /users/:user_id queries
 export const userQueryIdentifierFields = ["_id", "username"];
-if (ADDITIONAL_IDENTIFIER_FIELDS)
-  ADDITIONAL_IDENTIFIER_FIELDS.split(",").forEach((f) =>
+if (ADDITIONAL_USER_QUERY_IDENTIFIER_FIELDS)
+  ADDITIONAL_USER_QUERY_IDENTIFIER_FIELDS.split(",").forEach((f) =>
     userQueryIdentifierFields.push(f)
   );
 

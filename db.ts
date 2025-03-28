@@ -1,5 +1,6 @@
 import neo4j from "neo4j-driver";
 import { hash_password } from "./utils/passwords";
+import { userQueryIdentifierFields } from "./config";
 
 export const {
   NEO4J_URL = "bolt://localhost",
@@ -102,7 +103,8 @@ const create_admin_if_not_exists = async () => {
 };
 
 const create_constraints = async () => {
-  const fields = ["_id", "username"];
+  // const fields = ["_id", "username"];
+  const fields = userQueryIdentifierFields; // Is this really OK?
   const session = driver.session();
 
   try {

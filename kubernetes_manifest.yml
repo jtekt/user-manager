@@ -27,7 +27,7 @@ spec:
             - name: ADDITIONAL_SEARCHABLE_FIELDS
               value: employee_number,username
             # Don't do this as this is not unique!
-            # - name: ADDITIONAL_IDENTIFIER_FIELDS
+            # - name: ADDITIONAL_USER_QUERY_IDENTIFIER_FIELDS
             #   value: employee_number
             - name: ADDITIONAL_LOGIN_IDENTIFIER_FIELDS
               value: employee_number
