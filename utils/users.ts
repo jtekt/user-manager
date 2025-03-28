@@ -43,9 +43,10 @@ export const get_auth_user = async (query: string, params: any) => {
   try {
     const { records } = await session.run(query, params);
 
-    if (!records.length) throw `User ${params} not found in the database`;
+    if (!records.length)
+      throw `User with ${JSON.stringify(params)} not found in the DB`;
     if (records.length > 1)
-      throw `Multiple users with params ${params} found in the database`;
+      throw `Multiple users with ${JSON.stringify(params)} found in the DB`;
     user = records[0].get("user");
     user.cached = false;
   } catch (error) {

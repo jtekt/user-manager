@@ -106,8 +106,6 @@ export const login = async (
     register_last_login(user);
     removeUserFromCache(user);
 
-    console.log(`[Auth] Successful login from user ${userIdentifier}`);
-
     // TODO: refresh token
     res.send({ jwt, user });
   } catch (error) {
