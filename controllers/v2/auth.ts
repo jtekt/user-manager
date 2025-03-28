@@ -55,9 +55,9 @@ export const middleware = async (
     const { records } = await session.run(query, params);
 
     if (!records.length)
-      throw `[Neo4J] User ${user_id} not found in the database`;
+      throw `[Neo4J] [Auth v2] User ${user_id} not found in the database`;
     if (records.length > 1)
-      throw `Multiple users with ID ${user_id} found in the database`;
+      throw `[Neo4J] [Auth v2] Multiple users with ID ${user_id} found in the database`;
 
     const user = records[0].get("user");
 

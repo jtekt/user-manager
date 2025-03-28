@@ -52,6 +52,8 @@ const find_user_in_db = (identifier: string) =>
       .then(({ records }) => {
         if (!records.length)
           return reject(createHttpError(403, `User ${identifier} not found`));
+
+        // TODO: consider removing this check
         if (records.length > 1)
           return reject(
             createHttpError(500, `Multiple users identitfied as ${identifier}`)
@@ -176,9 +178,7 @@ const oidcAuthMiddlewareFactory = () => {
 
       if (!user) {
         try {
-          const query = `
-        ${oidc_user_query}
-        RETURN properties(user) as user
+          const query = `${oidc_user_query} RETURN properties(user) as user
       `;
           const params = { identifier: keycloakUser.preferred_username };
           user = await get_auth_user(query, params);

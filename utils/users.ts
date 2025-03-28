@@ -44,9 +44,16 @@ export const get_auth_user = async (query: string, params: any) => {
     const { records } = await session.run(query, params);
 
     if (!records.length)
-      throw `User with ${JSON.stringify(params)} not found in the DB`;
+      throw `[Neo4j] [Authv3] User with ${JSON.stringify(
+        params
+      )} not found in the DB`;
+
+    // TODO: consider removing this check
     if (records.length > 1)
-      throw `Multiple users with ${JSON.stringify(params)} found in the DB`;
+      throw `[Neo4j] [Authv3] Multiple users with ${JSON.stringify(
+        params
+      )} found in the DB`;
+
     user = records[0].get("user");
     user.cached = false;
   } catch (error) {
