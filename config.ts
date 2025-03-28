@@ -19,7 +19,7 @@ if (ADDITIONAL_LOGIN_IDENTIFIER_FIELDS)
   );
 
 // Used for GET /users/users_id
-export const identifierFields = ["_id", "username", "email_address"];
+export const identifierFields = ["_id", "username"];
 if (ADDITIONAL_IDENTIFIER_FIELDS)
   ADDITIONAL_IDENTIFIER_FIELDS.split(",").forEach((f) =>
     identifierFields.push(f)
