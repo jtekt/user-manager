@@ -4,6 +4,7 @@ import { compare_password } from "../../utils/passwords";
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap";
 import { register_last_login, user_query } from "../../utils/users";
 import { Request, Response, NextFunction } from "express";
+import { identifierFields } from "../../config";
 import { retrieve_jwt, verify_token, generate_token } from "../../utils/tokens";
 
 const find_user_in_db = (identifier: string) =>
@@ -11,7 +12,7 @@ const find_user_in_db = (identifier: string) =>
     // The error management here is quite bad
     const session = driver.session();
 
-    const query = `${user_query} RETURN properties(user) as user`;
+    const query = `${user_query} RETURN DISTINCT(user)`;
 
     session
       .run(query, { identifier })
@@ -51,7 +52,7 @@ export const middleware = async (
 
     const query = `${user_query} RETURN user`;
 
-    const params = { identifier: user_id.toString() }; // Forcing string
+    const params = { user_id: user_id.toString() }; // Forcing string
     const { records } = await session.run(query, params);
 
     if (!records.length)
