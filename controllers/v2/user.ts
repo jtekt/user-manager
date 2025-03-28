@@ -7,14 +7,10 @@ export const get_user = (req: Request, res: Response, next: NextFunction) => {
   if (user_id === "self") user_id = get_current_user_id(res);
   if (!user_id) return res.status(400).send(`user_id not defined`);
 
-  // Forcing as string, hopefully just temporary
-  // was needed for whereabouts
-  user_id = user_id.toString();
-
   const session = driver.session();
   const query = `${user_query} RETURN user`;
   session
-    .run(query, { identifier: user_id })
+    .run(query, { identifier: user_id.toString() })
     .then(({ records }: any) => {
       if (!records.length) {
         console.log(`[Neo4J] User ${user_id} not found`);

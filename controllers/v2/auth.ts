@@ -2,16 +2,17 @@ import { driver } from "../../db";
 import createHttpError from "http-errors";
 import { compare_password } from "../../utils/passwords";
 import { authenticateWithLdap, hostname as ldapHostname } from "../../ldap";
-import { register_last_login, user_query } from "../../utils/users";
+import { login_user_query, register_last_login } from "../../utils/users";
 import { Request, Response, NextFunction } from "express";
 import { retrieve_jwt, verify_token, generate_token } from "../../utils/tokens";
 
+// This is only used for login
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
     // The error management here is quite bad
     const session = driver.session();
 
-    const query = `${user_query} RETURN DISTINCT(user)`;
+    const query = `${login_user_query} RETURN DISTINCT(user)`;
 
     session
       .run(query, { identifier })
@@ -49,23 +50,22 @@ export const middleware = async (
       token
     );
 
-    const query = `${user_query} RETURN user`;
-
-    const params = { identifier: user_id.toString() }; // Forcing string
+    const query = ` MATCH (user:User { _id: $_id }) RETURN user`;
+    const identifier = user_id.toString();
+    const params = { identifier }; // Forcing string
     const { records } = await session.run(query, params);
 
     if (!records.length)
       throw `[Neo4J] [Auth v2] User ${user_id} not found in the database`;
+
+    // TODO: might want to remove this check
     if (records.length > 1)
       throw `[Neo4J] [Auth v2] Multiple users with ID ${user_id} found in the database`;
 
     const user = records[0].get("user");
 
     if (tokenIdFromJwt !== user.properties.token_id) {
-      console.log(
-        `[Auth v2] Token has been revoked for user ${user.properties.email_address}`
-      );
-      throw `Token has been revoked`;
+      throw `Token has been revoked for user identified by ${identifier}`;
     }
 
     // save user in res locasl so that it can use in other places

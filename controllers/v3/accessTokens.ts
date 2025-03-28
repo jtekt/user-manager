@@ -4,6 +4,7 @@ import { removeUserFromCache } from "../../cache";
 import { user_query } from "../../utils/users";
 import { driver } from "../../db";
 import { verify_token } from "../../utils/tokens";
+
 export const revokeToken = async (
   req: Request,
   res: Response,
@@ -24,6 +25,7 @@ export const revokeToken = async (
       throw createHttpError(403, `Unauthorized to modify another user`);
     }
 
+    // WARNING: user_id can be employee_number or email
     const query = `
       ${user_query}
       SET user.token_id = randomUUID()

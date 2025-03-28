@@ -2,6 +2,7 @@ import createHttpError from "http-errors";
 import { compare_password } from "../../utils/passwords";
 import {
   get_auth_user,
+  login_user_query,
   oidc_user_query,
   register_last_login,
   user_query,
@@ -40,12 +41,13 @@ export const initializeOidcAuth = () => {
   }
 };
 
+// NOTE: this is only used for login
 const find_user_in_db = (identifier: string) =>
   new Promise((resolve, reject) => {
     // The error handling here is quite bad
     const session = driver.session();
 
-    const query = `${user_query} RETURN properties(user) as user`;
+    const query = `${login_user_query} RETURN properties(user) as user`;
 
     session
       .run(query, { identifier })
@@ -124,10 +126,12 @@ const legacyAuthMiddleware = async (
   let user = await getUserFromCache(user_id);
 
   if (!user) {
+    // NOTE: this only operated with _id
     const session = driver.session();
     try {
-      const query = ` ${user_query} RETURN properties(user) as user`;
-      const params = { identifier: user_id.toString() };
+      const query = `MATCH (user:User { _id: $_id }) RETURN properties(user) as user`;
+
+      const params = { _id: user_id.toString() };
       user = await get_auth_user(query, params);
       setUserInCache(user);
     } catch (error) {

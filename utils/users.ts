@@ -1,4 +1,8 @@
-import { identifierFields, oidc_identifier_field } from "../config";
+import {
+  identifierFields,
+  loginIdentifierFields,
+  oidc_identifier_field,
+} from "../config";
 import { driver } from "../db";
 import { Response } from "express";
 
@@ -11,11 +15,16 @@ export const get_current_user_id = (res: Response) => {
   return get_id_of_user(user);
 };
 
-const identificationArgs = identifierFields
+// When user_id is passed in routes such as /users/:user_id
+export const user_query = ` MATCH (user:User) WHERE ${identifierFields
   .map((f) => `user.${f} = $identifier`)
-  .join(" OR ");
+  .join(" OR ")}`;
 
-export const user_query = ` MATCH (user:User) WHERE ${identificationArgs}`;
+// Used to query users during login
+export const login_user_query = ` MATCH (user:User) WHERE ${loginIdentifierFields
+  .map((f) => `user.${f} = $identifier`)
+  .join(" OR ")}`;
+
 export const oidc_user_query = ` MATCH (user:User)  WHERE user.${oidc_identifier_field} = $identifier `;
 
 export const register_last_login = async (user: any) => {

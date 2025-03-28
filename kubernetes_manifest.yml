@@ -26,7 +26,10 @@ spec:
             #   value: bolt://neo4j
             - name: ADDITIONAL_SEARCHABLE_FIELDS
               value: employee_number,username
-            - name: ADDITIONAL_IDENTIFIER_FIELDS
+            # Don't do this as this is not unique!
+            # - name: ADDITIONAL_IDENTIFIER_FIELDS
+            #   value: employee_number
+            - name: ADDITIONAL_LOGIN_IDENTIFIER_FIELDS
               value: employee_number
             - name: OIDC_JWKS_URI
               value: http://10.115.1.100:30416/realms/jtekt/protocol/openid-connect/certs

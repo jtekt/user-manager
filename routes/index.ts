@@ -1,20 +1,25 @@
-import { Router } from "express"
-import { SMTP_HOST, SMTP_PORT, SMTP_FROM } from "../mail"
-import { LDAP_HOSTNAME, LDAP_SEARCH_OU, LDAP_USERNAME_ATTRIBUTE } from "../ldap"
-import { REDIS_URL } from "../cache"
-import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db"
-import { version, author } from "../package.json"
-import router_v1 from "./v1/index"
-import router_v2 from "./v2/index"
-import router_v3 from "./v3/index"
-import { Request, Response } from "express"
+import { Router } from "express";
+import { SMTP_HOST, SMTP_PORT, SMTP_FROM } from "../mail";
+import {
+  LDAP_HOSTNAME,
+  LDAP_SEARCH_OU,
+  LDAP_USERNAME_ATTRIBUTE,
+} from "../ldap";
+import { REDIS_URL } from "../cache";
+import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db";
+import { version, author } from "../package.json";
+import router_v1 from "./v1/index";
+import router_v2 from "./v2/index";
+import router_v3 from "./v3/index";
+import { Request, Response } from "express";
 import {
   identifierFields,
   jwt_expiration_time,
+  loginIdentifierFields,
   oidc_jwks_uri,
   searchableFields,
-} from "../config"
-const router = Router()
+} from "../config";
+const router = Router();
 
 router.get("/", (req: Request, res: Response) => {
   res.send({
@@ -44,12 +49,13 @@ router.get("/", (req: Request, res: Response) => {
     jwt_expiration_time,
     identifierFields,
     searchableFields,
-  })
-})
+    loginIdentifierFields,
+  });
+});
 
-router.use("/", router_v1)
-router.use("/v1", router_v1)
-router.use("/v2", router_v2)
-router.use("/v3", router_v3)
+router.use("/", router_v1);
+router.use("/v1", router_v1);
+router.use("/v2", router_v2);
+router.use("/v3", router_v3);
 
-export default router
+export default router;
