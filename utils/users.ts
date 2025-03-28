@@ -1,5 +1,5 @@
 import {
-  identifierFields,
+  userQueryIdentifierFields,
   loginIdentifierFields,
   oidc_identifier_field,
 } from "../config";
@@ -16,7 +16,7 @@ export const get_current_user_id = (res: Response) => {
 };
 
 // When user_id is passed in routes such as /users/:user_id
-export const user_query = ` MATCH (user:User) WHERE ${identifierFields
+export const user_query = ` MATCH (user:User) WHERE ${userQueryIdentifierFields
   .map((f) => `user.${f} = $identifier`)
   .join(" OR ")}`;
 

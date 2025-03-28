@@ -102,16 +102,14 @@ const create_admin_if_not_exists = async () => {
 };
 
 const create_constraints = async () => {
-  // TODO: get those from config identifierFields
-  // PROBLEM: email_address is not unique
-  const properties = ["_id", "username"];
+  const fields = ["_id", "username"];
   const session = driver.session();
 
   try {
-    for await (const prop of properties) {
-      console.log(`[Neo4J] Creating ${prop} constraint`);
+    for await (const field of fields) {
+      console.log(`[Neo4J] Creating ${field} constraint`);
       await session.run(
-        `CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.${prop} IS UNIQUE`
+        `CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.${field} IS UNIQUE`
       );
     }
   } catch (error: any) {

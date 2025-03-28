@@ -13,7 +13,7 @@ import router_v2 from "./v2/index";
 import router_v3 from "./v3/index";
 import { Request, Response } from "express";
 import {
-  identifierFields,
+  userQueryIdentifierFields,
   jwt_expiration_time,
   loginIdentifierFields,
   oidc_jwks_uri,
@@ -47,7 +47,7 @@ router.get("/", (req: Request, res: Response) => {
       oidc_jwks_uri: oidc_jwks_uri,
     },
     jwt_expiration_time,
-    identifierFields,
+    userQueryIdentifierFields,
     searchableFields,
     loginIdentifierFields,
   });

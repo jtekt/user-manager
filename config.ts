@@ -18,13 +18,14 @@ if (ADDITIONAL_LOGIN_IDENTIFIER_FIELDS)
     loginIdentifierFields.push(f)
   );
 
-// Used for GET /users/users_id
-export const identifierFields = ["_id", "username"];
+// Used as user_id in /users/:user_id queries
+export const userQueryIdentifierFields = ["_id", "username"];
 if (ADDITIONAL_IDENTIFIER_FIELDS)
   ADDITIONAL_IDENTIFIER_FIELDS.split(",").forEach((f) =>
-    identifierFields.push(f)
+    userQueryIdentifierFields.push(f)
   );
 
+// Only used for GET /users
 export const searchableFields = ["email_address", "display_name", "_id"];
 if (ADDITIONAL_SEARCHABLE_FIELDS)
   ADDITIONAL_SEARCHABLE_FIELDS.split(",").forEach((f) =>
