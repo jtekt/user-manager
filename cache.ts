@@ -31,7 +31,7 @@ export const setUserInCache = async (user: any, field: string = "_id") => {
   if (!client) return;
   const identifier = user[field];
   if (field) {
-    console.log(`[Cache] Setting user using ${field}: ${identifier} in cache`);
+    // console.log(`[Cache] Setting user using ${field}: ${identifier} in cache`);
     await client.set(`user:${identifier}`, JSON.stringify(user), {
       EX: 60 * 60 * 12,
     });

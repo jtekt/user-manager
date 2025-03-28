@@ -59,10 +59,6 @@ const find_user_in_db = (identifier: string) =>
 
         const user = records[0].get("user");
 
-        console.log(
-          `[Neo4j] User ${identifier} found in the DB (ID: ${user._id})`
-        );
-
         resolve(user);
       })
       .catch((error: any) => {
