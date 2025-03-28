@@ -51,7 +51,7 @@ export const middleware = async (
 
     const query = `${user_query} RETURN user`;
 
-    const params = { user_id: user_id.toString() }; // Forcing string
+    const params = { identifier: user_id.toString() }; // Forcing string
     const { records } = await session.run(query, params);
 
     if (!records.length)

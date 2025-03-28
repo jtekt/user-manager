@@ -29,7 +29,7 @@ export const register_last_login = async (user: any) => {
       RETURN user.last_login as last_login
       `;
 
-    await session.run(query, { user_id });
+    await session.run(query, { identifier: user_id });
   } catch (error) {
     throw error;
   } finally {

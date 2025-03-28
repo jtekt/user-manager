@@ -130,11 +130,8 @@ const legacyAuthMiddleware = async (
   if (!user) {
     const session = driver.session();
     try {
-      const query = `
-          ${user_query}
-          RETURN properties(user) as user
-        `;
-      const params = { user_id: user_id.toString() };
+      const query = ` ${user_query} RETURN properties(user) as user`;
+      const params = { identifier: user_id.toString() };
       user = await get_auth_user(query, params);
       setUserInCache(user);
     } catch (error) {
