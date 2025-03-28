@@ -1,4 +1,4 @@
-import { oidc_identifier_field } from "../config";
+import { identifierFields, oidc_identifier_field } from "../config";
 import { driver } from "../db";
 import { Response } from "express";
 
@@ -11,9 +11,11 @@ export const get_current_user_id = (res: Response) => {
   return get_id_of_user(user);
 };
 
-export const user_id_filter = ` WHERE user._id = $user_id OR user.username = $user_id`;
+const identificationArgs = identifierFields
+  .map((f) => `user.${f} = $identifier`)
+  .join(" OR ");
 
-export const user_query = ` MATCH (user:User) ${user_id_filter}`;
+export const user_query = ` MATCH (user:User) WHERE ${identificationArgs}`;
 export const oidc_user_query = ` MATCH (user:User)  WHERE user.${oidc_identifier_field} = $identifier `;
 
 export const register_last_login = async (user: any) => {
