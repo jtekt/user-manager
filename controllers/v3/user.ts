@@ -14,7 +14,7 @@ import {
   setUserInCache,
   removeUserFromCache,
 } from "../../cache";
-import { searchableFields } from "../../config";
+import { searchableFields, userQueryIdentifierFields } from "../../config";
 
 export const create_user = async (
   req: Request,
@@ -74,57 +74,70 @@ export const create_user = async (
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const {
     search = "",
-    ids,
-    employee_numbers, // TODO: this is specific to this company
-    batch_size = 100,
-    start_index = 0,
+    employee_numbers = [], // TODO: deprecate
+    batch_size = "100",
+    start_index = "0",
     sort = "display_name",
     order = "ASC",
-    ...filters
+    // ...filters
   } = req.query;
 
+  if (order !== "ASC" && order !== "DESC")
+    throw createHttpError(400, `order can only be ASC or DESC`);
+
+  // This uses the $search param, i.e. the ?search= query param
   const searchArgs = searchableFields
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)
     .join(" OR ");
 
-  // TODO: unwind if array
-  const dynamicFilters = Object.keys(filters)
-    .map((key) => {
-      return `UNWIND $${key} as ${key}
-     // This WITH is needed to isolate from previous MATCH
-    WITH ${key}
-    // NOTE: This overrides previous MATCH
-    OPTIONAL MATCH (user:User {${key}: ${key}})`;
-    })
-    .join("\n\n ");
+  // TODO: get list that from config?
+  const queryParamsIdentifierKeys = ["id", "_id", "identifier", "username"];
+  const identifiers = queryParamsIdentifierKeys.reduce((acc: string[], k) => {
+    // NOTE: Also dealing with plural form
+    const queryParam = req.query[k] || req.query[`${k}s`];
 
-  const ids_query = `
-    UNWIND $ids as id
-    // This WITH is needed to isolate from previous MATCH
-    WITH id
-    // NOTE: This overrides previous MATCH
-    OPTIONAL MATCH (user:User {_id: id})
-    `;
+    if (queryParam) {
+      // TODO: tying
+      if (Array.isArray(queryParam)) acc.push(...(queryParam as string[]));
+      else if (typeof queryParam === "string") acc.push(queryParam);
+    }
+    return acc;
+  }, []);
 
-  // specific to this app
-  const employee_numbers_query = `
-    UNWIND $employee_numbers as employee_number
-    // This WITH is needed to isolate from previous MATCH
-    WITH employee_number
-    // NOTE: This overrides previous MATCH
-    OPTIONAL MATCH (user:User {employee_number: toString(employee_number)})
-    `;
+  const identifiersQueryArgs = userQueryIdentifierFields
+    .map((f) => `user.${f} IN $identifiers`)
+    .join(" OR ");
 
+  const identifiersQuery = `AND (${identifiersQueryArgs})`;
+
+  // TODO: Deprecate as specific to this app
+  if (!Array.isArray(employee_numbers))
+    throw createHttpError(400, `employee_numbers must be an array`);
+  const employeeNumbersQuery = `AND user.employee_number IN $employee_numbers`;
+
+  // TODO: Fix injection risk
+  // const dynamicFilters = Object.keys(filters)
+  //   .map((key) => {
+  //     return `UNWIND $${key} as ${key}
+  //    // This WITH is needed to isolate from previous MATCH
+  //   WITH ${key}
+  //   // NOTE: This overrides previous MATCH
+  //   OPTIONAL MATCH (user:User {${key}: ${filters[key]}})`;
+  //   })
+  //   .join("\n\n ");
+
+  // IDEA: could use a dummy query to start off WHERE clause
   const query = `
     OPTIONAL MATCH (user:User)
-    WHERE ${searchArgs}
-    ${dynamicFilters ? dynamicFilters : ""}
-    ${ids ? ids_query : ""}
-    ${employee_numbers ? employee_numbers_query : ""}
+    WHERE (${searchArgs})
+    ${identifiers.length ? identifiersQuery : ""}
+    ${employee_numbers.length ? employeeNumbersQuery : ""}
 
-    WITH user ORDER BY user[$sort] ${order === "ASC" ? "ASC" : "DESC"}
+    
 
-    // Aggregation
+    WITH user ORDER BY user[$sort] ${order}
+
+    // Aggregation, pagination
     WITH
       COLLECT(DISTINCT properties(user)) as users,
       COUNT(DISTINCT user) as count,
@@ -142,12 +155,13 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
 
   const parameters = {
     search,
-    ids,
-    employee_numbers,
+    employee_numbers, // TODO: deprecate
     start_index,
     batch_size,
-    ...filters,
     sort,
+    order,
+    identifiers,
+    // ...filters, // TODO: This is dangerous
   };
 
   const session = driver.session();

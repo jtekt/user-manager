@@ -43,7 +43,7 @@ This is a simple user management and authentication microservice used for intern
 | LDAP_SEARCH_OU               | User search base                                                      |                  |
 | LDAP_USERNAME                | Username for LDAP queries                                             |                  |
 | LDAP_PASSWORD                | Password for LDAP queries                                             |                  |
-| LDAP_USERNAME_ATTRIBUTE      | Username attribute for user queries                                   | mail             |
+| LDAP_USERNAME_ATTRIBUTE      | Username attribute for user queries when logging in                   | mail             |
 | REDIS_URL                    | URL of the Redis cache, leave empty to disable caching                |                  |
 | ADDITIONAL_SEARCHABLE_FIELDS | Comma separated list of fields to query users with                    |                  |
 | ADDITIONAL_IDENTIFIER_FIELDS | Comma separated list of fields users can use as identiufier for login |                  |
