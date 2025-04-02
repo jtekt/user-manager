@@ -1,3 +1,4 @@
+import createHttpError from "http-errors";
 import { driver } from "../../db";
 import { get_current_user_id, user_query } from "../../utils/users";
 import { Request, Response, NextFunction } from "express";
@@ -31,6 +32,9 @@ export const get_user = (req: Request, res: Response, next: NextFunction) => {
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const { search, ids } = req.query;
 
+  if (ids && !Array.isArray(ids))
+    throw createHttpError(400, "ids is not an array");
+
   let search_query = "";
   if (search) {
     search_query = `
@@ -49,11 +53,9 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
 
   let ids_query = "";
   if (ids) {
-    search_query = `
+    ids_query = `
     WITH user
-    UNWIND $ids as id
-    WITH id, user
-    WHERE user._id = toString(id)
+    WHERE user._id in $ids
     `;
   }
 
@@ -82,7 +84,6 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
       });
 
       res.send(users);
-      console.log(`[Neo4J] Users queried`);
     })
     .catch(next)
     .finally(() => {

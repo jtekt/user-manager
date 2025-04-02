@@ -91,6 +91,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     .join(" OR ");
 
   // TODO: get list that from config?
+  // TODO: username should be matched against username, etc.
   const queryParamsIdentifierKeys = ["id", "_id", "identifier", "username"];
   const identifiers = queryParamsIdentifierKeys.reduce((acc: string[], k) => {
     // NOTE: Also dealing with plural form
