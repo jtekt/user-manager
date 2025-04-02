@@ -79,14 +79,14 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     start_index = "0",
     sort = "display_name",
     order = "ASC",
-    ...filters
+    // ...filters
   } = req.query;
 
   if (order !== "ASC" && order !== "DESC")
     throw createHttpError(400, `order can only be ASC or DESC`);
 
-  if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
-    throw createHttpError(400, `Filters cannot be arrays`);
+  // if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
+  //   throw createHttpError(400, `Filters cannot be arrays`);
 
   // This uses the $search param, i.e. the ?search= query param
   const searchArgs = searchableFields
@@ -101,7 +101,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     const queryParam = req.query[k] || req.query[`${k}s`];
 
     if (queryParam) {
-      // TODO: tying
+      // TODO: typing
       if (Array.isArray(queryParam)) acc.push(...(queryParam as string[]));
       else if (typeof queryParam === "string") acc.push(queryParam);
     }
@@ -119,20 +119,20 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     throw createHttpError(400, `employee_numbers must be an array`);
   const employeeNumbersQuery = `AND user.employee_number IN $employee_numbers`;
 
-  const filteringQuery = `
-    WITH user
-    UNWIND KEYS($filters) as filterKey
-    WITH filterKey, user
-    WHERE user[filterKey] = $filters[filterKey]
-    `;
+  // const filteringQuery = `
+  //   WITH user
+  //   UNWIND KEYS($filters) as filterKey
+  //   WITH filterKey, user
+  //   WHERE user[filterKey] = $filters[filterKey]
+  //   `;
 
   // IDEA: could use a dummy query to start off WHERE clause
+  // TODO+ removed filters for now
   const query = `
     OPTIONAL MATCH (user:User)
     WHERE (${searchArgs})
     ${identifiers.length ? identifiersQuery : ""}
     ${employee_numbers.length ? employeeNumbersQuery : ""}
-    ${Object.keys(filters).length ? filteringQuery : ""}
 
     
 
@@ -162,7 +162,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     sort,
     order,
     identifiers,
-    filters,
+    // filters,
   };
 
   const session = driver.session();
