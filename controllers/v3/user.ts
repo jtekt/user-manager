@@ -85,6 +85,9 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
   if (order !== "ASC" && order !== "DESC")
     throw createHttpError(400, `order can only be ASC or DESC`);
 
+  if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
+    throw createHttpError(400, `Filters cannot be arrays`);
+
   // This uses the $search param, i.e. the ?search= query param
   const searchArgs = searchableFields
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)
