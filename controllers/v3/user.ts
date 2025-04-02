@@ -74,19 +74,16 @@ export const create_user = async (
 export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const {
     search = "",
-    employee_numbers = [], // TODO: deprecate
     batch_size = "100",
     start_index = "0",
     sort = "display_name",
     order = "ASC",
-    // ...filters
+    employee_numbers = [], // TODO: deprecate
+    ...rest
   } = req.query;
 
   if (order !== "ASC" && order !== "DESC")
     throw createHttpError(400, `order can only be ASC or DESC`);
-
-  // if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
-  //   throw createHttpError(400, `Filters cannot be arrays`);
 
   // This uses the $search param, i.e. the ?search= query param
   const searchArgs = searchableFields
@@ -98,7 +95,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
   const queryParamsIdentifierKeys = ["id", "_id", "identifier", "username"];
   const identifiers = queryParamsIdentifierKeys.reduce((acc: string[], k) => {
     // NOTE: Also dealing with plural form
-    const queryParam = req.query[k] || req.query[`${k}s`];
+    const queryParam = rest[k] || rest[`${k}s`];
 
     if (queryParam) {
       // TODO: typing
@@ -107,6 +104,16 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     }
     return acc;
   }, []);
+
+  // Not super nice, rest of query params are filters
+  const filters = Object.keys(rest).reduce((acc: any, k) => {
+    if (!queryParamsIdentifierKeys.includes(k)) acc[k] = rest[k];
+    return acc;
+  }, {});
+
+  // filters as array not supported for now
+  if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
+    throw createHttpError(400, `Filters cannot be arrays`);
 
   const identifiersQueryArgs = userQueryIdentifierFields
     .map((f) => `user.${f} IN $identifiers`)
@@ -119,21 +126,20 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     throw createHttpError(400, `employee_numbers must be an array`);
   const employeeNumbersQuery = `AND user.employee_number IN $employee_numbers`;
 
-  // const filteringQuery = `
-  //   WITH user
-  //   UNWIND KEYS($filters) as filterKey
-  //   WITH filterKey, user
-  //   WHERE user[filterKey] = $filters[filterKey]
-  //   `;
+  const filteringQuery = `
+    WITH user
+    UNWIND KEYS($filters) as filterKey
+    WITH filterKey, user
+    WHERE user[filterKey] = $filters[filterKey]
+    `;
 
   // IDEA: could use a dummy query to start off WHERE clause
-  // TODO+ removed filters for now
   const query = `
     OPTIONAL MATCH (user:User)
     WHERE (${searchArgs})
     ${identifiers.length ? identifiersQuery : ""}
     ${employee_numbers.length ? employeeNumbersQuery : ""}
-
+    ${Object.keys(filters).length ? filteringQuery : ""}
     
 
     WITH user ORDER BY user[$sort] ${order}
@@ -156,13 +162,13 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
 
   const parameters = {
     search,
-    employee_numbers, // TODO: deprecate
     start_index,
     batch_size,
     sort,
     order,
     identifiers,
-    // filters,
+    filters,
+    employee_numbers, // TODO: deprecate
   };
 
   const session = driver.session();
