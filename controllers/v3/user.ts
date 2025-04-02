@@ -79,7 +79,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     start_index = "0",
     sort = "display_name",
     order = "ASC",
-    // ...filters
+    ...filters
   } = req.query;
 
   if (order !== "ASC" && order !== "DESC")
@@ -116,16 +116,12 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     throw createHttpError(400, `employee_numbers must be an array`);
   const employeeNumbersQuery = `AND user.employee_number IN $employee_numbers`;
 
-  // TODO: Fix injection risk
-  // const dynamicFilters = Object.keys(filters)
-  //   .map((key) => {
-  //     return `UNWIND $${key} as ${key}
-  //    // This WITH is needed to isolate from previous MATCH
-  //   WITH ${key}
-  //   // NOTE: This overrides previous MATCH
-  //   OPTIONAL MATCH (user:User {${key}: ${filters[key]}})`;
-  //   })
-  //   .join("\n\n ");
+  const filteringQuery = `
+    WITH user
+    UNWIND KEYS($filters) as filterKey
+    WITH filterKey, user
+    WHERE user[filterKey] = $filters[filterKey]
+    `;
 
   // IDEA: could use a dummy query to start off WHERE clause
   const query = `
@@ -133,6 +129,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     WHERE (${searchArgs})
     ${identifiers.length ? identifiersQuery : ""}
     ${employee_numbers.length ? employeeNumbersQuery : ""}
+    ${Object.keys(filters).length ? filteringQuery : ""}
 
     
 
@@ -162,7 +159,7 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     sort,
     order,
     identifiers,
-    // ...filters, // TODO: This is dangerous
+    filters,
   };
 
   const session = driver.session();
