@@ -90,26 +90,37 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
     .map((f) => `toLower(user.${f}) CONTAINS toLower($search)`)
     .join(" OR ");
 
-  // TODO: get list that from config?
-  // TODO: username should be matched against username, etc.
-  const queryParamsIdentifierKeys = ["id", "_id", "identifier", "username"];
-  const identifiers = queryParamsIdentifierKeys.reduce((acc: string[], k) => {
-    // NOTE: Also dealing with plural form
-    const queryParam = rest[k] || rest[`${k}s`];
+  const { filters, identifiers } = Object.keys(rest).reduce(
+    (acc: any, queryParamKey) => {
+      const queryParamValue = rest[queryParamKey];
 
-    if (queryParam) {
-      // TODO: typing
-      if (Array.isArray(queryParam)) acc.push(...(queryParam as string[]));
-      else if (typeof queryParam === "string") acc.push(queryParam);
-    }
-    return acc;
-  }, []);
+      // TODO: get list that from config?
+      // TODO: username should be matched against username, etc.
+      const queryParamsIdentifierKeys = [
+        "id",
+        "_id",
+        "identifier",
+        "username",
+        "ids",
+        "_ids",
+        "identifiers",
+        "usernames",
+      ];
 
-  // Not super nice, rest of query params are filters
-  const filters = Object.keys(rest).reduce((acc: any, k) => {
-    if (!queryParamsIdentifierKeys.includes(k)) acc[k] = rest[k];
-    return acc;
-  }, {});
+      if (queryParamsIdentifierKeys.includes(queryParamKey)) {
+        // It's an identifiers
+        if (Array.isArray(queryParamValue))
+          acc.identifiers.push(...(queryParamValue as string[]));
+        else if (typeof queryParamValue === "string")
+          acc.identifiers.push(queryParamValue);
+      } else {
+        acc.filters[queryParamKey] = queryParamValue;
+      }
+
+      return acc;
+    },
+    { filters: {}, identifiers: [] }
+  );
 
   // filters as array not supported for now
   if (Object.keys(filters).some((k) => Array.isArray(filters[k])))
