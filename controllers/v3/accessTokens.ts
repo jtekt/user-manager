@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
-import { removeUserFromCache } from "../../cache";
+import { getUserFromCache, removeUserFromCache, setUserInCache } from "../../cache";
 import { user_query } from "../../utils/users";
 import { driver } from "../../db";
-import { verify_token } from "../../utils/tokens";
+import { generate_token, verify_token } from "../../utils/tokens";
 
 export const revokeToken = async (
   req: Request,
@@ -59,4 +59,52 @@ export const decodeToken = async (
   const decodedToken = verify_token(token);
   if (!decodedToken) throw createHttpError(403, `Invalid token`);
   res.send(decodedToken);
+};
+
+export const generate_token_for_user = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { user_id } = req.params;
+    const requester = res.locals.user;
+
+    if (!user_id) throw createHttpError(400, "user_id not defined");
+    if (!requester) throw createHttpError(401, "User not authenticated");
+
+    const isSelf = user_id === "self";
+
+    if (!isSelf && !requester.isAdmin) {
+      throw createHttpError(403, "Forbidden");
+    }
+
+    let user = requester;
+
+    if (!isSelf) {
+      user = await getUserFromCache(user_id);
+
+      if (!user) {
+        const session = driver.session();
+        try {
+          const query = `${user_query} RETURN properties(user) AS user`;
+          const { records } = await session.run(query, { identifier: user_id });
+
+          if (!records.length) {
+            throw createHttpError(404, `User ${user_id} not found`);
+          }
+
+          user = records[0].get("user");
+          user.cached = false;
+          setUserInCache(user);
+        } finally {
+          await session.close();
+        }
+      }
+    }
+
+    res.send(await generate_token(user));
+  } catch (err) {
+    next(err);
+  }
 };
