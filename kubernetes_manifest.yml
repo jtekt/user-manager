@@ -52,3 +52,20 @@ spec:
   selector:
     app: ${APPLICATION_NAME}
   type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${APPLICATION_NAME}
+spec:
+  rules:
+    - host: employees-api.jtektrnd.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ${APPLICATION_NAME}
+                port:
+                  number: 80
