@@ -32,7 +32,7 @@ spec:
             - name: ADDITIONAL_LOGIN_IDENTIFIER_FIELDS
               value: employee_number
             - name: OIDC_JWKS_URI
-              value: http://10.115.1.100:30416/realms/jtekt/protocol/openid-connect/certs
+              value: http://keycloak.keycloak:8080/realms/jtekt/protocol/openid-connect/certs
             - name: OIDC_IDENTIFIER_FIELD
               value: username
           envFrom:
