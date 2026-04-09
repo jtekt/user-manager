@@ -30,12 +30,10 @@ export const getUserFromCache = async (user_id: string) => {
 export const setUserInCache = async (user: any, field: string = "_id") => {
   if (!client) return;
   const identifier = user[field];
-  if (field) {
-    // console.log(`[Cache] Setting user using ${field}: ${identifier} in cache`);
-    await client.set(`user:${identifier}`, JSON.stringify(user), {
-      EX: 60 * 60 * 12,
-    });
-  }
+  if (!identifier) return;
+  await client.set(`user:${identifier}`, JSON.stringify(user), {
+    EX: 60 * 60 * 12,
+  });
 };
 
 // Loops all the cacheIdentifierFields and removes the user from cache

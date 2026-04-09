@@ -241,7 +241,7 @@ export const get_user = async (
     const { records } = await session.run(query, { identifier: user_id });
 
     if (!records.length)
-      throw createHttpError(400, `User ${user_id} not found`);
+      throw createHttpError(404, `User ${user_id} not found`);
 
     user = records[0].get("user");
     setUserInCache(user);
@@ -289,7 +289,7 @@ export const patch_user = async (
     const query = `
       ${user_query}
       SET user += $properties
-      RETURN user`;
+      RETURN properties(user) as user`;
 
     const params = { identifier: user_id, properties };
 

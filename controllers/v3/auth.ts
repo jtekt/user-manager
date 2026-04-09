@@ -98,6 +98,7 @@ export const login = async (
     register_last_login(user);
     removeUserFromCache(user);
 
+    delete user.password_hashed;
     // TODO: refresh token
     res.send({ jwt, user });
   } catch (error) {
@@ -113,7 +114,7 @@ const legacyAuthMiddleware = async (
   const token = retrieve_jwt(req, res) as string;
   const decodedToken = (await verify_token(token)) as any;
   const { user_id, token_id: tokenIdFromToken, iat } = decodedToken;
-  if (!user_id) throw `Token does not contain user_id`;
+  if (!user_id) throw createHttpError(401, `Token does not contain user_id`);
 
   let user = await getUserFromCache(user_id);
 
@@ -125,19 +126,20 @@ const legacyAuthMiddleware = async (
     setUserInCache(user);
   }
 
-  if (!user) throw `User does not exist`;
+  if (!user) throw createHttpError(401, `User does not exist`);
 
   // Token checks
   if (tokenIdFromToken !== user.token_id) {
     console.log(
       `[Auth v3] Token has been revoked for user ${user.email_address}`
     );
-    throw `Token has been revoked`;
+    throw createHttpError(401, `Token has been revoked`);
   }
 
   if (jwt_expiration_time && jwt_expiration_time !== "infinite") {
     const now = new Date().getTime() / 1000;
-    if (now - iat > Number(jwt_expiration_time)) throw `Token has expired`;
+    if (now - iat > Number(jwt_expiration_time))
+      throw createHttpError(401, `Token has expired`);
   }
 
   res.locals.user = user;
@@ -156,30 +158,25 @@ const oidcAuthMiddlewareFactory = () => {
       const kid = decoded.header?.kid;
       if (!kid) throw "Missing token kid";
       const key = await jwksClient!.getSigningKey(kid);
-      let keycloakUser = (await verify_token_oidc(
+      let oidcUser = (await verify_token_oidc(
         token,
         key.getPublicKey()
       )) as any;
 
       // Uses the preferred_username field as the identifier for OIDC
-      let user = await getUserFromCache(keycloakUser.preferred_username);
+      let user = await getUserFromCache(oidcUser.preferred_username);
 
       if (!user) {
-        try {
-          const query = `${oidc_user_query} RETURN properties(user) as user
-      `;
-          const params = { identifier: keycloakUser.preferred_username };
-          user = await get_auth_user(query, params);
-          setUserInCache(user, "username");
-        } catch (error) {
-          console.log(`error: ${error}`);
-          throw error;
-        }
+        const query = `${oidc_user_query} RETURN properties(user) as user`;
+        const params = { identifier: oidcUser.preferred_username };
+        user = await get_auth_user(query, params);
+        setUserInCache(user, "username");
       }
       res.locals.user = user;
       next();
-    } catch (err) {
-      throw "Failed to retrieve or verify OIDC token: " + err;
+    } catch (err: any) {
+      if (err.status) throw err;
+      throw createHttpError(401, `Failed to retrieve or verify OIDC token: ${err}`);
     }
   };
 };

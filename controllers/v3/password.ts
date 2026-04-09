@@ -38,8 +38,7 @@ export const update_password = async (
       throw createHttpError(400, error.message);
     }
 
-    const { new_password, new_password_confirm } = req.body;
-    // TODO: compare new_password_confirm
+    const { new_password } = req.body;
 
     const password_hashed = await hash_password(new_password);
 

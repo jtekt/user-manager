@@ -44,28 +44,19 @@ export const register_last_login = async (user: any) => {
 
 export const get_auth_user = async (query: string, params: any) => {
   const session = driver.session();
-  let user: any;
   try {
     const { records } = await session.run(query, params);
 
     if (!records.length)
-      throw `[Neo4j] [Authv3] User with ${JSON.stringify(
-        params
-      )} not found in the DB`;
+      throw new Error(`[Neo4j] [Authv3] User with ${JSON.stringify(params)} not found in the DB`);
 
-    // TODO: consider removing this check
     if (records.length > 1)
-      throw `[Neo4j] [Authv3] Multiple users with ${JSON.stringify(
-        params
-      )} found in the DB`;
+      throw new Error(`[Neo4j] [Authv3] Multiple users with ${JSON.stringify(params)} found in the DB`);
 
-    user = records[0].get("user");
+    const user = records[0].get("user");
     user.cached = false;
-  } catch (error) {
-    console.log(`error: ${error}`);
-    throw error;
+    return user;
   } finally {
     session.close();
   }
-  return user;
 };
