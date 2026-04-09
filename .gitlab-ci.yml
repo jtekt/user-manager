@@ -1,11 +1,8 @@
 stages:
   - build
   - test
+  - release
   - deploy
-
-image: moreillon/ci-dind:4bca50d7
-services:
-  - name: docker:24.0.7-dind
 
 variables:
   APPLICATION_NAME: employee-manager
@@ -22,10 +19,9 @@ variables:
 
 build:
   stage: build
-  tags:
-    - dind
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "refactor"
   before_script:
     # ECR login for pushing and pulling
     - >
@@ -52,16 +48,10 @@ test:
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   tags:
     - dind
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "refactor"
   before_script:
-    # ECR login for pushing and pulling
-    - >
-      aws ecr get-login-password
-      | docker login
-      --username AWS
-      --password-stdin
-      ${ECR_URL}
     # Creating network for TDD
     - docker network create tdd
     - >
@@ -87,7 +77,13 @@ test:
       --env TEST_PASSWORD=administrator
       ${CONTAINER_IMAGE_TEST}
       npm run coverage
-    # If pass, then push the images
+
+release:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  script:
+    - docker pull ${CONTAINER_IMAGE_TEST}
     # Tagging
     - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_TAGGED}
     - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_LATEST}
@@ -97,23 +93,10 @@ test:
 
 deploy:
   stage: deploy
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
   before_script:
-    - >
-      kubectl create secret docker-registry ${K8S_ECR_SECRET}
-      --docker-server=${ECR_URL}
-      --docker-username=AWS
-      --docker-password $(aws ecr get-login-password)
-      --dry-run=client -o yaml
-      | kubectl apply -f -
+    - kubectl config use-context eks/gitlab-agent-for-kubernetes:eks
+    - kubectl config set-context --current --namespace=moreillon
   script:
-    # create/update the deployment
     - envsubst < kubernetes_manifest.yml | kubectl apply -f -
-    # Pull latest image by restarting the deployment
-    #- kubectl rollout restart deployment/${APPLICATION_NAME}
-  environment:
-    name: production
-    kubernetes:
-      # Obtained from GitLab
-      namespace: ${KUBERNETES_NAMESPACE}
