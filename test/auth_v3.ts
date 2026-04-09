@@ -30,5 +30,21 @@ describe("/v3/auth", () => {
 
       expect(status).to.equal(403)
     })
+
+    it("Should reject login without an identifier", async () => {
+      const { status } = await request(app)
+        .post("/v3/auth/login")
+        .send({ password: TEST_PASSWORD })
+
+      expect(status).to.equal(400)
+    })
+
+    it("Should reject login without a password", async () => {
+      const { status } = await request(app)
+        .post("/v3/auth/login")
+        .send({ username: TEST_USERNAME })
+
+      expect(status).to.equal(400)
+    })
   })
 })
