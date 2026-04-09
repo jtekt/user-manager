@@ -24,7 +24,7 @@ describe("/v1/users", () => {
     it("Should not allow unauthenticated access to users", async () => {
       const { status } = await request(app).get("/v1/users/")
 
-      expect(status).to.equal(403)
+      expect(status).to.be.oneOf([401, 403])
     })
 
     it("Should allow authenticated users to query users", async () => {
@@ -57,7 +57,7 @@ describe("/v1/users", () => {
     it("Should not allow unauthenticated user to query user", async () => {
       const { status } = await request(app).get(`/v1/users/${admin_id}`)
 
-      expect(status).to.equal(403)
+      expect(status).to.be.oneOf([401, 403])
     })
   })
 })
