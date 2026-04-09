@@ -7,75 +7,59 @@ import { Request, Response, NextFunction } from "express";
 import { retrieve_jwt, verify_token, generate_token } from "../../utils/tokens";
 
 // This is only used for login
-const find_user_in_db = (identifier: string) =>
-  new Promise((resolve, reject) => {
-    // The error management here is quite bad
-    const session = driver.session();
-
+const find_user_in_db = async (identifier: string) => {
+  const session = driver.session();
+  try {
     const query = `${login_user_query} RETURN DISTINCT(user)`;
+    const { records } = await session.run(query, { identifier });
 
-    session
-      .run(query, { identifier })
-      .then(({ records }: any) => {
-        if (!records.length)
-          return reject(createHttpError(403, `User ${identifier} not found`));
-        if (records.length > 1)
-          return reject(
-            createHttpError(
-              500,
-              `Multiple users identitfied as ${identifier} found`
-            )
-          );
+    if (!records.length)
+      throw createHttpError(403, `User ${identifier} not found`);
+    if (records.length > 1)
+      throw createHttpError(500, `Multiple users identified as ${identifier}`);
 
-        const user = records[0].get("user");
-
-        resolve(user);
-      })
-      .catch((error) => {
-        reject({ code: 500, message: error });
-      })
-      .finally(() => session.close());
-  });
+    return records[0].get("user");
+  } catch (error: any) {
+    if (error.status) throw error;
+    throw createHttpError(500, error);
+  } finally {
+    session.close();
+  }
+};
 
 export const middleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const session = driver.session();
-
   try {
     const token = retrieve_jwt(req, res) as string;
-    const { user_id, token_id: tokenIdFromJwt }: any = await verify_token(
-      token
-    );
+    const { user_id, token_id: tokenIdFromJwt }: any = await verify_token(token);
 
-    const query = ` MATCH (user:User { _id: $_id }) RETURN user`;
-    const params = { _id: user_id.toString() }; // Forcing string
-    const { records } = await session.run(query, params);
+    const session = driver.session();
+    let user: any;
+    try {
+      const query = `MATCH (user:User { _id: $_id }) RETURN user`;
+      const { records } = await session.run(query, { _id: user_id.toString() });
 
-    if (!records.length)
-      throw `[Neo4J] [Auth v2] User ${user_id} not found in the database`;
+      if (!records.length)
+        throw createHttpError(401, `User ${user_id} not found`);
 
-    // TODO: might want to remove this check
-    if (records.length > 1)
-      throw `[Neo4J] [Auth v2] Multiple users with ID ${user_id} found in the database`;
+      if (records.length > 1)
+        throw createHttpError(500, `Multiple users with ID ${user_id} found`);
 
-    const user = records[0].get("user");
-
-    if (tokenIdFromJwt !== user.properties.token_id) {
-      throw `Token has been revoked for user identified by ${user_id}`;
+      user = records[0].get("user");
+    } finally {
+      session.close();
     }
 
-    // save user in res locasl so that it can use in other places
-    res.locals.user = user;
+    if (tokenIdFromJwt !== user.properties.token_id)
+      throw createHttpError(401, `Token has been revoked`);
 
+    res.locals.user = user;
     next();
-  } catch (error) {
-    console.log(error);
-    res.status(403).send(error);
-  } finally {
-    session.close();
+  } catch (err: any) {
+    next(err);
   }
 };
 
@@ -123,6 +107,7 @@ export const login = async (
 
     const jwt = await generate_token(user);
 
+    delete user.properties.password_hashed;
     res.send({ jwt, user });
 
     console.log(
