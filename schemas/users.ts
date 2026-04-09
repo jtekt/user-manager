@@ -1,10 +1,11 @@
 import Joi from "joi"
 
 export const newUserSchema = Joi.object({
-  email_address: Joi.string().email({}).required(),
+  email_address: Joi.string().email({}),
+  username: Joi.string().min(2).max(100),
   password: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")).required(),
   password_confirm: Joi.ref("password"),
-})
+}).or("email_address", "username")
 
 const user_update = {
   // Fields that can be edited by regular users
