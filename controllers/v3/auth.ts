@@ -31,7 +31,7 @@ let jwksClient: ReturnType<typeof createJwksClient> | null = null;
 export const initializeOidcAuth = () => {
   if (oidc_jwks_uri && !jwksClient) {
     console.log(
-      `[Auth] Initializing OIDC client with JWKS URI: ${oidc_jwks_uri}`
+      `[Auth] Initializing OIDC client with JWKS URI: ${oidc_jwks_uri}`,
     );
     jwksClient = createJwksClient({
       jwksUri: oidc_jwks_uri,
@@ -66,7 +66,7 @@ const find_user_in_db = async (identifier: string) => {
 export const login = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     // Input parsing
@@ -109,7 +109,7 @@ export const login = async (
 const legacyAuthMiddleware = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const token = retrieve_jwt(req, res) as string;
   const decodedToken = (await verify_token(token)) as any;
@@ -131,7 +131,7 @@ const legacyAuthMiddleware = async (
   // Token checks
   if (tokenIdFromToken !== user.token_id) {
     console.log(
-      `[Auth v3] Token has been revoked for user ${user.email_address}`
+      `[Auth v3] Token has been revoked for user ${user.email_address}`,
     );
     throw createHttpError(401, `Token has been revoked`);
   }
@@ -146,42 +146,48 @@ const legacyAuthMiddleware = async (
   next();
 };
 
-const oidcAuthMiddlewareFactory = () => {
-  initializeOidcAuth();
+const oidcAuthMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = retrieve_jwt(req, res) as string;
+    const decoded = decode_token(token) as any;
+    if (!decoded) throw `Decoded token is null`;
 
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const token = retrieve_jwt(req, res) as string;
-      const decoded = decode_token(token) as any;
-      if (!decoded) throw `Decoded token is null`;
+    const kid = decoded.header?.kid;
+    if (!kid) throw "Missing token kid";
+    const key = await jwksClient!.getSigningKey(kid);
+    const oidcUser = (await verify_token_oidc(
+      token,
+      key.getPublicKey(),
+    )) as any;
 
-      const kid = decoded.header?.kid;
-      if (!kid) throw "Missing token kid";
-      const key = await jwksClient!.getSigningKey(kid);
-      let oidcUser = (await verify_token_oidc(
-        token,
-        key.getPublicKey()
-      )) as any;
+    // Uses the preferred_username field as the identifier for OIDC
+    let user = await getUserFromCache(oidcUser.preferred_username);
 
-      // Uses the preferred_username field as the identifier for OIDC
-      let user = await getUserFromCache(oidcUser.preferred_username);
-
-      if (!user) {
-        const query = `${oidc_user_query} RETURN properties(user) as user`;
-        const params = { identifier: oidcUser.preferred_username };
-        user = await get_auth_user(query, params);
-        setUserInCache(user, "username");
-      }
-      res.locals.user = user;
-      next();
-    } catch (err: any) {
-      if (err.status) throw err;
-      throw createHttpError(401, `Failed to retrieve or verify OIDC token: ${err}`);
+    if (!user) {
+      const query = `${oidc_user_query} RETURN properties(user) as user`;
+      const params = { identifier: oidcUser.preferred_username };
+      user = await get_auth_user(query, params);
+      setUserInCache(user, "username");
     }
-  };
+    res.locals.user = user;
+    next();
+  } catch (err: any) {
+    if (err.status) throw err;
+    throw createHttpError(
+      401,
+      `Failed to retrieve or verify OIDC token: ${err}`,
+    );
+  }
 };
 
-export const middlewareChain = authMiddlewareChainer([
-  legacyAuthMiddleware,
-  oidcAuthMiddlewareFactory(),
-]);
+const middlewares = [legacyAuthMiddleware];
+if (oidc_jwks_uri) {
+  initializeOidcAuth();
+  middlewares.push(oidcAuthMiddleware);
+}
+
+export const middlewareChain = authMiddlewareChainer(middlewares);
