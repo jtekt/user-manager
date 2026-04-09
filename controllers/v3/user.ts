@@ -30,7 +30,7 @@ export const create_user = async (
     const properties = req.body;
     // TODO: only email
     try {
-      await newUserSchema.validateAsync(properties);
+      newUserSchema.parse(properties);
     } catch (error: any) {
       throw createHttpError(400, error);
     }
@@ -281,8 +281,8 @@ export const patch_user = async (
 
     try {
       if (current_user_is_admin)
-        await userAdminUpdateSchema.validateAsync(properties);
-      else await userUpdateSchema.validateAsync(properties);
+        userAdminUpdateSchema.parse(properties);
+      else userUpdateSchema.parse(properties);
     } catch (error: any) {
       throw createHttpError(403, error);
     }
