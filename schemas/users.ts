@@ -7,6 +7,9 @@ export const newUserSchema = z.object({
   password_confirm: z.string().optional(),
 }).refine(data => data.email_address || data.username, {
   message: "Either email_address or username must be provided",
+}).refine(data => !data.password_confirm || data.password_confirm === data.password, {
+  message: "Passwords do not match",
+  path: ["password_confirm"],
 })
 
 const user_update = z.object({
