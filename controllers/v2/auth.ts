@@ -45,7 +45,7 @@ export const middleware = async (
   const session = driver.session();
 
   try {
-    const token = (await retrieve_jwt(req, res)) as string;
+    const token = retrieve_jwt(req, res) as string;
     const { user_id, token_id: tokenIdFromJwt }: any = await verify_token(
       token
     );

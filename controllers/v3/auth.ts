@@ -42,34 +42,26 @@ export const initializeOidcAuth = () => {
 };
 
 // NOTE: this is only used for login
-const find_user_in_db = (identifier: string) =>
-  new Promise((resolve, reject) => {
-    // The error handling here is quite bad
-    const session = driver.session();
-
+const find_user_in_db = async (identifier: string) => {
+  const session = driver.session();
+  try {
     const query = `${login_user_query} RETURN properties(user) as user`;
+    const { records } = await session.run(query, { identifier });
 
-    session
-      .run(query, { identifier })
-      .then(({ records }) => {
-        if (!records.length)
-          return reject(createHttpError(403, `User ${identifier} not found`));
+    if (!records.length)
+      throw createHttpError(403, `User ${identifier} not found`);
 
-        // TODO: consider removing this check
-        if (records.length > 1)
-          return reject(
-            createHttpError(500, `Multiple users identitfied as ${identifier}`)
-          );
+    if (records.length > 1)
+      throw createHttpError(500, `Multiple users identified as ${identifier}`);
 
-        const user = records[0].get("user");
-
-        resolve(user);
-      })
-      .catch((error: any) => {
-        reject(createHttpError(500, error));
-      })
-      .finally(() => session.close());
-  });
+    return records[0].get("user");
+  } catch (error: any) {
+    if (error.status) throw error;
+    throw createHttpError(500, error);
+  } finally {
+    session.close();
+  }
+};
 
 export const login = async (
   req: Request,
@@ -118,7 +110,7 @@ const legacyAuthMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  const token = (await retrieve_jwt(req, res)) as string;
+  const token = retrieve_jwt(req, res) as string;
   const decodedToken = (await verify_token(token)) as any;
   const { user_id, token_id: tokenIdFromToken, iat } = decodedToken;
   if (!user_id) throw `Token does not contain user_id`;
@@ -126,19 +118,11 @@ const legacyAuthMiddleware = async (
   let user = await getUserFromCache(user_id);
 
   if (!user) {
-    // NOTE: this only operated with _id
-    const session = driver.session();
-    try {
-      const query = `MATCH (user:User { _id: $_id }) RETURN properties(user) as user`;
-
-      const params = { _id: user_id.toString() };
-      user = await get_auth_user(query, params);
-      setUserInCache(user);
-    } catch (error) {
-      throw error;
-    } finally {
-      session.close();
-    }
+    // NOTE: this only operates with _id
+    const query = `MATCH (user:User { _id: $_id }) RETURN properties(user) as user`;
+    const params = { _id: user_id.toString() };
+    user = await get_auth_user(query, params);
+    setUserInCache(user);
   }
 
   if (!user) throw `User does not exist`;
@@ -165,7 +149,7 @@ const oidcAuthMiddlewareFactory = () => {
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const token = (await retrieve_jwt(req, res)) as string;
+      const token = retrieve_jwt(req, res) as string;
       const decoded = decode_token(token) as any;
       if (!decoded) throw `Decoded token is null`;
 

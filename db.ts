@@ -108,14 +108,12 @@ const create_constraints = async () => {
   const session = driver.session();
 
   try {
-    for await (const field of fields) {
+    for (const field of fields) {
       console.log(`[Neo4J] Creating ${field} constraint`);
       await session.run(
         `CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.${field} IS UNIQUE`
       );
     }
-  } catch (error: any) {
-    throw error;
   } finally {
     session.close();
   }
@@ -128,7 +126,7 @@ export const init = async () => {
     await create_admin_if_not_exists();
     await set_ids_to_nodes_without_ids();
     await create_constraints();
-    console.error(`[Neo4J] DB initialized`);
+    console.log(`[Neo4J] DB initialized`);
   } else {
     setTimeout(init, 10000);
   }

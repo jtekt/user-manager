@@ -8,22 +8,20 @@ const { JWT_SECRET } = process.env
 
 if (!JWT_SECRET) throw new Error(`Token secret not set`)
 
-export const retrieve_jwt = (req: Request, res: Response) =>
-  new Promise((resolve, reject) => {
-    // Did not need to be a promise
-    const { headers, query, body }: any = req
-    const jwt =
-      headers.authorization?.split(" ")[1] ||
-      headers.authorization ||
-      new Cookies(req, res).get("jwt") ||
-      new Cookies(req, res).get("token") ||
-      query.jwt ||
-      query.token
+export const retrieve_jwt = (req: Request, res: Response) => {
+  const { headers, query }: any = req
+  const token =
+    headers.authorization?.split(" ")[1] ||
+    headers.authorization ||
+    new Cookies(req, res).get("jwt") ||
+    new Cookies(req, res).get("token") ||
+    query.jwt ||
+    query.token
 
-    if (!jwt) return reject(`JWT not provided`)
+  if (!token) throw `JWT not provided`
 
-    resolve(jwt)
-  })
+  return token
+}
 
 export const generate_token = (user: any) =>
   new Promise((resolve, reject) => {

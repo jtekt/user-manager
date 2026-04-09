@@ -29,18 +29,14 @@ export const oidc_user_query = ` MATCH (user:User)  WHERE user.${oidc_identifier
 
 export const register_last_login = async (user: any) => {
   const session = driver.session();
-
+  const user_id = get_id_of_user(user);
+  const query = `
+    ${user_query}
+    SET user.last_login = date()
+    RETURN user.last_login as last_login
+    `;
   try {
-    const user_id = get_id_of_user(user);
-    const query = `
-      ${user_query}
-      SET user.last_login = date()
-      RETURN user.last_login as last_login
-      `;
-
     await session.run(query, { identifier: user_id });
-  } catch (error) {
-    throw error;
   } finally {
     session.close();
   }
