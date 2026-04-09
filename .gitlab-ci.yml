@@ -23,25 +23,13 @@ build:
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_COMMIT_BRANCH == "refactor"
   before_script:
-    # ECR login for pushing and pulling
-    - >
-      aws ecr get-login-password
-      | docker login
-      --username AWS
-      --password-stdin
-      ${ECR_URL}
-    # Create repository if needed
     - >
       aws ecr create-repository --repository-name ${APPLICATION_NAME}
       || echo "Repository might have already existed"
 
   script:
-    # Build the docker image. Pass proxy variables if set
     - docker build -t ${CONTAINER_IMAGE_TEST} .
-    # Pushing image to registry
     - docker push ${CONTAINER_IMAGE_TEST}
-    # Cleanup
-    - docker image rm ${CONTAINER_IMAGE_TEST}
 
 test:
   stage: test
