@@ -35,13 +35,17 @@ export const create_user = async (
       throw createHttpError(400, error);
     }
 
-    const { password, email_address, display_name } = properties;
+    const { password, email_address, username, display_name } = properties;
 
     const password_hashed = await hash_password(password);
 
+    // MERGE on email_address if provided, otherwise on username
+    const mergeKey = email_address ? "email_address" : "username";
+    const mergeValue = email_address || username;
+
     // TODO: allow additional labels via env var
     const query = `
-      MERGE (user:User:Employee {email_address: $user_properties.email_address})
+      MERGE (user:User:Employee {${mergeKey}: $merge_value})
 
       ON CREATE SET user += $user_properties
       ON CREATE SET user._id = randomUUID()
@@ -50,13 +54,14 @@ export const create_user = async (
       RETURN properties(user) as user
       `;
 
-    const user_properties = {
-      email_address,
+    const user_properties: Record<string, any> = {
       password_hashed,
-      display_name: display_name || email_address,
+      display_name: display_name || email_address || username,
     };
+    if (email_address) user_properties.email_address = email_address;
+    if (username) user_properties.username = username;
 
-    const { records } = await session.run(query, { user_properties });
+    const { records } = await session.run(query, { user_properties, merge_value: mergeValue });
 
     const user = records[0].get("user");
     delete user.password_hashed;
