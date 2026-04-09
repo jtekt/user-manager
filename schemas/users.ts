@@ -35,7 +35,7 @@ const user_update = z.object({
   name_katakana: z.string().min(2).max(100).optional(),
   first_name_katakana: z.string().min(2).max(100).optional(),
   family_name_katakana: z.string().min(2).max(100).optional(),
-})
+}).strict()
 
 export const userUpdateSchema = user_update
 export const userAdminUpdateSchema = user_update.extend({
