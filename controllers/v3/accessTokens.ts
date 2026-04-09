@@ -90,7 +90,7 @@ export const decodeToken = async (
 ) => {
   const { token } = req.body;
   if (!token) throw createHttpError(400, `No token provided`);
-  const decodedToken = verify_token(token);
+  const decodedToken = await verify_token(token);
   if (!decodedToken) throw createHttpError(403, `Invalid token`);
   res.send(decodedToken);
 };
