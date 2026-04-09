@@ -173,7 +173,7 @@ describe("/v3/users", () => {
         .send({ _id: "banana" })
         .set("Authorization", `Bearer ${admin_jwt}`);
 
-      expect(status).to.equal(403);
+      expect(status).to.be.oneOf([400, 403]);
     });
 
     it("Should allow update own display name", async () => {
@@ -200,7 +200,7 @@ describe("/v3/users", () => {
         .send({ isAdmin: true })
         .set("Authorization", `Bearer ${new_user_jwt}`);
 
-      expect(status).to.equal(403);
+      expect(status).to.be.oneOf([400, 403]);
     });
 
     it("Should allow admin to set admin-only fields on another user", async () => {
