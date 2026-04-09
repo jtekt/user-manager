@@ -1,12 +1,9 @@
-import Joi from "joi"
+import { z } from "zod"
 
-const schema = Joi.object({
-  new_password: Joi.string()
-    .min(6)
-    .pattern(new RegExp(/^[ A-Za-z0-9_@./#&+-]*$/))
-    .required(),
-
-  new_password_confirm: Joi.ref("new_password"),
-}).with("new_password", "new_password_confirm")
-
-export const passwordUpdateSchema = schema
+export const passwordUpdateSchema = z.object({
+  new_password: z.string().min(6).regex(/^[ A-Za-z0-9_@./#&+-]*$/),
+  new_password_confirm: z.string(),
+}).refine(data => data.new_password === data.new_password_confirm, {
+  message: "Passwords do not match",
+  path: ["new_password_confirm"],
+})

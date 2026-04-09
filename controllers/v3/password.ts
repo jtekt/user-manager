@@ -33,7 +33,7 @@ export const update_password = async (
     }
 
     try {
-      await passwordUpdateSchema.validateAsync(req.body);
+      passwordUpdateSchema.parse(req.body);
     } catch (error: any) {
       throw createHttpError(400, error.message);
     }

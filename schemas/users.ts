@@ -1,48 +1,45 @@
-import Joi from "joi"
+import { z } from "zod"
 
-export const newUserSchema = Joi.object({
-  email_address: Joi.string().email({}),
-  username: Joi.string().min(2).max(100),
-  password: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")).required(),
-  password_confirm: Joi.ref("password"),
-}).or("email_address", "username")
+export const newUserSchema = z.object({
+  email_address: z.string().email().optional(),
+  username: z.string().min(2).max(100).optional(),
+  password: z.string().regex(/^[a-zA-Z0-9]{3,30}$/),
+  password_confirm: z.string().optional(),
+}).refine(data => data.email_address || data.username, {
+  message: "Either email_address or username must be provided",
+})
 
-const user_update = {
+const user_update = z.object({
   // Fields that can be edited by regular users
-  avatar_src: Joi.string().allow("").max(500),
-  website: Joi.string().allow("").max(500),
+  avatar_src: z.string().max(500).optional(),
+  website: z.string().max(500).optional(),
 
   // Naming
-  display_name: Joi.string().min(2).max(100),
+  display_name: z.string().min(2).max(100).optional(),
 
-  first_name: Joi.string().min(2).max(100),
-  last_name: Joi.string().min(2).max(100),
-  family_name: Joi.string().min(2).max(100),
+  first_name: z.string().min(2).max(100).optional(),
+  last_name: z.string().min(2).max(100).optional(),
+  family_name: z.string().min(2).max(100).optional(),
 
-  name_kanji: Joi.string().min(2).max(100),
-  first_name_kanji: Joi.string().min(2).max(100),
-  family_name_kanji: Joi.string().min(2).max(100),
+  name_kanji: z.string().min(2).max(100).optional(),
+  first_name_kanji: z.string().min(2).max(100).optional(),
+  family_name_kanji: z.string().min(2).max(100).optional(),
 
-  name_romaji: Joi.string().min(2).max(100),
-  first_name_romaji: Joi.string().min(2).max(100),
-  family_name_romaji: Joi.string().min(2).max(100),
+  name_romaji: z.string().min(2).max(100).optional(),
+  first_name_romaji: z.string().min(2).max(100).optional(),
+  family_name_romaji: z.string().min(2).max(100).optional(),
 
-  name_katakana: Joi.string().min(2).max(100),
-  first_name_katakana: Joi.string().min(2).max(100),
-  family_name_katakana: Joi.string().min(2).max(100),
-}
+  name_katakana: z.string().min(2).max(100).optional(),
+  first_name_katakana: z.string().min(2).max(100).optional(),
+  family_name_katakana: z.string().min(2).max(100).optional(),
+})
 
-const user_admin_update = {
+export const userUpdateSchema = user_update
+export const userAdminUpdateSchema = user_update.extend({
   // Fields that can be edited by administrators
-  isAdmin: Joi.boolean(),
-  locked: Joi.boolean(),
-  activated: Joi.boolean(),
+  isAdmin: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  activated: z.boolean().optional(),
 
-  role: Joi.string().min(2).max(100),
-}
-
-export const userUpdateSchema = Joi.object(user_update)
-export const userAdminUpdateSchema = Joi.object({
-  ...user_update,
-  ...user_admin_update,
+  role: z.string().min(2).max(100).optional(),
 })
