@@ -22,7 +22,7 @@ export const retrieve_jwt = (req: Request, res: Response) => {
     query.jwt ||
     query.token
 
-  if (!token) throw `JWT not provided`
+  if (!token) throw createHttpError(401, `JWT not provided`)
 
   return token
 }
