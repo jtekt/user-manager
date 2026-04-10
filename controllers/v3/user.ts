@@ -76,7 +76,7 @@ export const create_user = async (
   }
 };
 
-export const get_users = (req: Request, res: Response, next: NextFunction) => {
+export const get_users = async (req: Request, res: Response, next: NextFunction) => {
   const {
     search = "",
     batch_size = "100",
@@ -188,30 +188,29 @@ export const get_users = (req: Request, res: Response, next: NextFunction) => {
   };
 
   const session = driver.session();
-  session
-    .run(query, parameters)
-    .then(({ records }: any) => {
-      const record = records[0];
-      if (!record) throw createHttpError(404, `No record found`);
+  try {
+    const { records } = await session.run(query, parameters);
+    const record = records[0];
+    if (!record) throw createHttpError(404, `No record found`);
 
-      const users = record.get("users");
-      users.forEach((user: any) => {
-        delete user.password_hashed;
-      });
-
-      const response = {
-        batch_size: record.get("batch_size"),
-        start_index: record.get("start_index"),
-        count: record.get("count"),
-        users,
-      };
-
-      res.send(response);
-    })
-    .catch(next)
-    .finally(() => {
-      session.close();
+    const users = record.get("users");
+    users.forEach((user: any) => {
+      delete user.password_hashed;
     });
+
+    const response = {
+      batch_size: record.get("batch_size"),
+      start_index: record.get("start_index"),
+      count: record.get("count"),
+      users,
+    };
+
+    res.send(response);
+  } catch (error) {
+    next(error);
+  } finally {
+    session.close();
+  }
 };
 
 export const get_user = async (
@@ -242,7 +241,7 @@ export const get_user = async (
     const { records } = await session.run(query, { identifier: user_id });
 
     if (!records.length)
-      throw createHttpError(400, `User ${user_id} not found`);
+      throw createHttpError(404, `User ${user_id} not found`);
 
     user = records[0].get("user");
     setUserInCache(user);
@@ -284,13 +283,13 @@ export const patch_user = async (
         userAdminUpdateSchema.parse(properties);
       else userUpdateSchema.parse(properties);
     } catch (error: any) {
-      throw createHttpError(403, error);
+      throw createHttpError(400, error);
     }
 
     const query = `
       ${user_query}
       SET user += $properties
-      RETURN user`;
+      RETURN properties(user) as user`;
 
     const params = { identifier: user_id, properties };
 
@@ -300,6 +299,7 @@ export const patch_user = async (
       throw createHttpError(404, `User ${user_id} not found`);
 
     const user = records[0].get("user");
+    delete user.password_hashed;
 
     removeUserFromCache(user);
 
@@ -312,7 +312,7 @@ export const patch_user = async (
   }
 };
 
-export const delete_user = (
+export const delete_user = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -333,16 +333,17 @@ export const delete_user = (
     DETACH DELETE (user)
     RETURN userData AS user`;
 
-  session
-    .run(query, { identifier: user_id })
-    .then(({ records }: any) => {
-      if (!records.length)
-        throw createHttpError(404, `User ${user_id} not found`);
-      console.log(`User ${user_id} deleted`);
-      const user = records[0].get("user");
-      removeUserFromCache(user);
-      res.send({ user_id });
-    })
-    .catch(next)
-    .finally(() => session.close());
+  try {
+    const { records } = await session.run(query, { identifier: user_id });
+    if (!records.length)
+      throw createHttpError(404, `User ${user_id} not found`);
+    console.log(`User ${user_id} deleted`);
+    const user = records[0].get("user");
+    removeUserFromCache(user);
+    res.send({ user_id });
+  } catch (error) {
+    next(error);
+  } finally {
+    session.close();
+  }
 };

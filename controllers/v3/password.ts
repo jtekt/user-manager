@@ -38,8 +38,7 @@ export const update_password = async (
       throw createHttpError(400, error.message);
     }
 
-    const { new_password, new_password_confirm } = req.body;
-    // TODO: compare new_password_confirm
+    const { new_password } = req.body;
 
     const password_hashed = await hash_password(new_password);
 
@@ -56,9 +55,10 @@ export const update_password = async (
     });
     if (!records.length)
       throw createHttpError(404, `User ${user_id} not found`);
-    // NEED TO REMOVE PASSWORD HASHED FROM RESPONSE
 
-    res.send(records[0].get("user"));
+    const user = records[0].get("user");
+    delete user.password_hashed;
+    res.send(user);
     console.log(`[Neo4J] Password of user ${user_id} updated`);
   } catch (error) {
     next(error);

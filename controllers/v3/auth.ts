@@ -5,7 +5,6 @@ import {
   login_user_query,
   oidc_user_query,
   register_last_login,
-  user_query,
 } from "../../utils/users";
 import { authenticateWithLdap } from "../../ldap";
 import { Request, Response, NextFunction } from "express";
@@ -17,64 +16,56 @@ import {
   verify_token_oidc,
   decode_token,
 } from "../../utils/tokens";
-import { jwt_expiration_time, oidc_jwks_uri } from "../../config";
+import {
+  jwt_expiration_time,
+  oidc_jwks_uri,
+  oidc_identifier_field,
+} from "../../config";
 import createJwksClient from "jwks-rsa";
 import {
   getUserFromCache,
   removeUserFromCache,
   setUserInCache,
 } from "../../cache";
-import { authMiddlewareChainer } from "@moreillon/express-auth-middleware-chainer";
-
 let jwksClient: ReturnType<typeof createJwksClient> | null = null;
 
-export const initializeOidcAuth = () => {
-  if (oidc_jwks_uri && !jwksClient) {
-    console.log(
-      `[Auth] Initializing OIDC client with JWKS URI: ${oidc_jwks_uri}`
-    );
-    jwksClient = createJwksClient({
-      jwksUri: oidc_jwks_uri,
-      cache: true,
-      rateLimit: true,
-    });
-  }
-};
+if (oidc_jwks_uri) {
+  console.log(
+    `[Auth] Initializing OIDC client with JWKS URI: ${oidc_jwks_uri}`,
+  );
+  jwksClient = createJwksClient({
+    jwksUri: oidc_jwks_uri,
+    cache: true,
+    rateLimit: true,
+  });
+}
 
 // NOTE: this is only used for login
-const find_user_in_db = (identifier: string) =>
-  new Promise((resolve, reject) => {
-    // The error handling here is quite bad
-    const session = driver.session();
-
+const find_user_in_db = async (identifier: string) => {
+  const session = driver.session();
+  try {
     const query = `${login_user_query} RETURN properties(user) as user`;
+    const { records } = await session.run(query, { identifier });
 
-    session
-      .run(query, { identifier })
-      .then(({ records }) => {
-        if (!records.length)
-          return reject(createHttpError(403, `User ${identifier} not found`));
+    if (!records.length)
+      throw createHttpError(403, `User ${identifier} not found`);
 
-        // TODO: consider removing this check
-        if (records.length > 1)
-          return reject(
-            createHttpError(500, `Multiple users identitfied as ${identifier}`)
-          );
+    if (records.length > 1)
+      throw createHttpError(500, `Multiple users identified as ${identifier}`);
 
-        const user = records[0].get("user");
-
-        resolve(user);
-      })
-      .catch((error: any) => {
-        reject(createHttpError(500, error));
-      })
-      .finally(() => session.close());
-  });
+    return records[0].get("user");
+  } catch (error: any) {
+    if (error.status) throw error;
+    throw createHttpError(500, error);
+  } finally {
+    session.close();
+  }
+};
 
 export const login = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     // Input parsing
@@ -106,101 +97,73 @@ export const login = async (
     register_last_login(user);
     removeUserFromCache(user);
 
-    // TODO: refresh token
+    delete user.password_hashed;
+
     res.send({ jwt, user });
   } catch (error) {
     next(error);
   }
 };
 
-const legacyAuthMiddleware = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const token = (await retrieve_jwt(req, res)) as string;
+const authenticateLegacyToken = async (token: string) => {
   const decodedToken = (await verify_token(token)) as any;
   const { user_id, token_id: tokenIdFromToken, iat } = decodedToken;
-  if (!user_id) throw `Token does not contain user_id`;
+  if (!user_id) throw createHttpError(401, `Token does not contain user_id`);
 
   let user = await getUserFromCache(user_id);
-
   if (!user) {
-    // NOTE: this only operated with _id
-    const session = driver.session();
-    try {
-      const query = `MATCH (user:User { _id: $_id }) RETURN properties(user) as user`;
-
-      const params = { _id: user_id.toString() };
-      user = await get_auth_user(query, params);
-      setUserInCache(user);
-    } catch (error) {
-      throw error;
-    } finally {
-      session.close();
-    }
+    const query = `MATCH (user:User { _id: $_id }) RETURN properties(user) as user`;
+    user = await get_auth_user(query, { _id: user_id.toString() });
+    setUserInCache(user);
   }
 
-  if (!user) throw `User does not exist`;
-
-  // Token checks
   if (tokenIdFromToken !== user.token_id) {
-    console.log(
-      `[Auth v3] Token has been revoked for user ${user.email_address}`
-    );
-    throw `Token has been revoked`;
+    console.log(`[Auth] Token has been revoked for user ${user.email_address}`);
+    throw createHttpError(401, `Token has been revoked`);
   }
 
   if (jwt_expiration_time && jwt_expiration_time !== "infinite") {
     const now = new Date().getTime() / 1000;
-    if (now - iat > Number(jwt_expiration_time)) throw `Token has expired`;
+    if (now - iat > Number(jwt_expiration_time))
+      throw createHttpError(401, `Token has expired`);
   }
 
-  res.locals.user = user;
-  next();
+  return user;
 };
 
-const oidcAuthMiddlewareFactory = () => {
-  initializeOidcAuth();
+const authenticateOidcToken = async (token: string, kid: string) => {
+  if (!jwksClient) throw createHttpError(401, `OIDC not configured`);
 
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const token = (await retrieve_jwt(req, res)) as string;
-      const decoded = decode_token(token) as any;
-      if (!decoded) throw `Decoded token is null`;
+  const key = await jwksClient.getSigningKey(kid);
+  const oidcUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
 
-      const kid = decoded.header?.kid;
-      if (!kid) throw "Missing token kid";
-      const key = await jwksClient!.getSigningKey(kid);
-      let keycloakUser = (await verify_token_oidc(
-        token,
-        key.getPublicKey()
-      )) as any;
+  const oidcIdentifier = oidcUser[oidc_identifier_field];
+  let user = await getUserFromCache(oidcIdentifier);
+  if (!user) {
+    const query = `${oidc_user_query} RETURN properties(user) as user`;
+    user = await get_auth_user(query, { identifier: oidcIdentifier });
+    setUserInCache(user, oidc_identifier_field);
+  }
 
-      // Uses the preferred_username field as the identifier for OIDC
-      let user = await getUserFromCache(keycloakUser.preferred_username);
-
-      if (!user) {
-        try {
-          const query = `${oidc_user_query} RETURN properties(user) as user
-      `;
-          const params = { identifier: keycloakUser.preferred_username };
-          user = await get_auth_user(query, params);
-          setUserInCache(user, "username");
-        } catch (error) {
-          console.log(`error: ${error}`);
-          throw error;
-        }
-      }
-      res.locals.user = user;
-      next();
-    } catch (err) {
-      throw "Failed to retrieve or verify OIDC token: " + err;
-    }
-  };
+  return user;
 };
 
-export const middlewareChain = authMiddlewareChainer([
-  legacyAuthMiddleware,
-  oidcAuthMiddlewareFactory(),
-]);
+export const middlewareChain = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = retrieve_jwt(req, res) as string;
+    const decoded = decode_token(token) as any;
+    const kid = decoded?.header?.kid;
+
+    res.locals.user = kid
+      ? await authenticateOidcToken(token, kid)
+      : await authenticateLegacyToken(token);
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+};

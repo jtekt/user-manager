@@ -1,9 +1,10 @@
 import { z } from "zod"
+import { passwordSchema } from "./passwords"
 
 export const newUserSchema = z.object({
   email_address: z.string().email().optional(),
   username: z.string().min(2).max(100).optional(),
-  password: z.string().regex(/^[a-zA-Z0-9]{3,30}$/),
+  password: passwordSchema,
   password_confirm: z.string().optional(),
 }).refine(data => data.email_address || data.username, {
   message: "Either email_address or username must be provided",
