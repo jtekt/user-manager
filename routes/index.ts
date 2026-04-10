@@ -18,6 +18,8 @@ import {
   loginIdentifierFields,
   OIDC_JWKS_URI,
   searchableFields,
+  OIDC_IDENTIFIER_FIELD,
+  OIDC_TOKEN_IDENTIFIER_FIELD,
 } from "../config";
 const router = Router();
 
@@ -44,12 +46,16 @@ router.get("/", (req: Request, res: Response) => {
       url: REDIS_URL,
     },
     auth: {
-      OIDC_JWKS_URI: OIDC_JWKS_URI,
+      loginIdentifierFields,
+      jwt_expiration_time: JWT_EXPIRATION_TIME,
+      oidc: {
+        jwks_uri: OIDC_JWKS_URI,
+        token_user_identifier: OIDC_TOKEN_IDENTIFIER_FIELD,
+        neo4j_user_identifier: OIDC_IDENTIFIER_FIELD,
+      },
     },
-    JWT_EXPIRATION_TIME,
     userQueryIdentifierFields,
     searchableFields,
-    loginIdentifierFields,
   });
 });
 
