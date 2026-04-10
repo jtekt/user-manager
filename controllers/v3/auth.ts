@@ -3,7 +3,6 @@ import { compare_password } from "../../utils/passwords";
 import {
   get_auth_user,
   login_user_query,
-  oidc_user_query,
   register_last_login,
 } from "../../utils/users";
 import { authenticateWithLdap } from "../../ldap";
@@ -17,9 +16,10 @@ import {
   decode_token,
 } from "../../utils/tokens";
 import {
-  jwt_expiration_time,
-  oidc_jwks_uri,
-  oidc_identifier_field,
+  JWT_EXPIRATION_TIME,
+  OIDC_JWKS_URI,
+  OIDC_IDENTIFIER_FIELD,
+  OIDC_TOKEN_IDENTIFIER_FIELD,
 } from "../../config";
 import createJwksClient from "jwks-rsa";
 import {
@@ -29,12 +29,12 @@ import {
 } from "../../cache";
 let jwksClient: ReturnType<typeof createJwksClient> | null = null;
 
-if (oidc_jwks_uri) {
+if (OIDC_JWKS_URI) {
   console.log(
-    `[Auth] Initializing OIDC client with JWKS URI: ${oidc_jwks_uri}`,
+    `[Auth] Initializing OIDC client with JWKS URI: ${OIDC_JWKS_URI}`,
   );
   jwksClient = createJwksClient({
-    jwksUri: oidc_jwks_uri,
+    jwksUri: OIDC_JWKS_URI,
     cache: true,
     rateLimit: true,
   });
@@ -122,9 +122,9 @@ const authenticateLegacyToken = async (token: string) => {
     throw createHttpError(401, `Token has been revoked`);
   }
 
-  if (jwt_expiration_time && jwt_expiration_time !== "infinite") {
+  if (JWT_EXPIRATION_TIME && JWT_EXPIRATION_TIME !== "infinite") {
     const now = new Date().getTime() / 1000;
-    if (now - iat > Number(jwt_expiration_time))
+    if (now - iat > Number(JWT_EXPIRATION_TIME))
       throw createHttpError(401, `Token has expired`);
   }
 
@@ -137,12 +137,16 @@ const authenticateOidcToken = async (token: string, kid: string) => {
   const key = await jwksClient.getSigningKey(kid);
   const oidcUser = (await verify_token_oidc(token, key.getPublicKey())) as any;
 
-  const oidcIdentifier = oidcUser[oidc_identifier_field];
+  const oidcIdentifier = oidcUser[OIDC_TOKEN_IDENTIFIER_FIELD];
   let user = await getUserFromCache(oidcIdentifier);
   if (!user) {
-    const query = `${oidc_user_query} RETURN properties(user) as user`;
+    const query = `
+      MATCH (user:User)
+      WHERE user.${OIDC_IDENTIFIER_FIELD} = $identifier  
+      RETURN properties(user) as user`;
+
     user = await get_auth_user(query, { identifier: oidcIdentifier });
-    setUserInCache(user, oidc_identifier_field);
+    setUserInCache(user, OIDC_IDENTIFIER_FIELD);
   }
 
   return user;

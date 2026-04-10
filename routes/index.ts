@@ -14,9 +14,9 @@ import router_v3 from "./v3/index";
 import { Request, Response } from "express";
 import {
   userQueryIdentifierFields,
-  jwt_expiration_time,
+  JWT_EXPIRATION_TIME,
   loginIdentifierFields,
-  oidc_jwks_uri,
+  OIDC_JWKS_URI,
   searchableFields,
 } from "../config";
 const router = Router();
@@ -44,9 +44,9 @@ router.get("/", (req: Request, res: Response) => {
       url: REDIS_URL,
     },
     auth: {
-      oidc_jwks_uri: oidc_jwks_uri,
+      OIDC_JWKS_URI: OIDC_JWKS_URI,
     },
-    jwt_expiration_time,
+    JWT_EXPIRATION_TIME,
     userQueryIdentifierFields,
     searchableFields,
     loginIdentifierFields,
