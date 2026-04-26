@@ -100,6 +100,24 @@ describe("/v3/users", () => {
       expect(status).to.equal(401);
     });
 
+    it("Should allow user creation with username only (no email)", async () => {
+      const { status } = await request(app)
+        .post("/v3/users/")
+        .send({ username: "test_username_only", password: "banana" })
+        .set("Authorization", `Bearer ${admin_jwt}`);
+
+      expect(status).to.equal(200);
+    });
+
+    it("Should allow user creation when email_address is an empty string", async () => {
+      const { status } = await request(app)
+        .post("/v3/users/")
+        .send({ email_address: "", username: "test_empty_email", password: "banana" })
+        .set("Authorization", `Bearer ${admin_jwt}`);
+
+      expect(status).to.equal(200);
+    });
+
     it("Should reject creation without email_address or username", async () => {
       const { status } = await request(app)
         .post("/v3/users/")
