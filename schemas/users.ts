@@ -2,8 +2,8 @@ import { z } from "zod"
 import { passwordSchema } from "./passwords"
 
 export const newUserSchema = z.object({
-  email_address: z.string().email().optional(),
-  username: z.string().min(2).max(100).optional(),
+  email_address: z.preprocess((v) => (v === "" ? undefined : v), z.string().email().optional()),
+  username: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(2).max(100).optional()),
   password: passwordSchema,
   password_confirm: z.string().optional(),
 }).refine(data => data.email_address || data.username, {
