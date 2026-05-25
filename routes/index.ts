@@ -20,6 +20,8 @@ import {
   searchableFields,
   OIDC_IDENTIFIER_FIELD,
   OIDC_TOKEN_IDENTIFIER_FIELD,
+  API_KEY_SERVICE_URL,
+  API_KEY_IDENTIFIER_FIELD,
 } from "../config";
 const router = Router();
 
@@ -52,6 +54,10 @@ router.get("/", (req: Request, res: Response) => {
         jwks_uri: OIDC_JWKS_URI,
         token_user_identifier: OIDC_TOKEN_IDENTIFIER_FIELD,
         neo4j_user_identifier: OIDC_IDENTIFIER_FIELD,
+      },
+      api_key: {
+        api_key_service_url: API_KEY_SERVICE_URL,
+        api_key_identifier_field: API_KEY_IDENTIFIER_FIELD,
       },
     },
     userQueryIdentifierFields,
