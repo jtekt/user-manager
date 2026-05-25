@@ -35,6 +35,10 @@ spec:
               value: http://keycloak.keycloak:8080/realms/jtekt/protocol/openid-connect/certs
             - name: OIDC_IDENTIFIER_FIELD
               value: username
+            - name: API_KEY_SERVICE_URL
+              value: http://api-key-manager-api:3000
+            - name: API_KEY_IDENTIFIER_FIELD
+              value: username
           envFrom:
             - secretRef:
                 name: environment-variables

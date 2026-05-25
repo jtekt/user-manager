@@ -6,6 +6,8 @@ export const {
   OIDC_JWKS_URI = "",
   OIDC_IDENTIFIER_FIELD = "username",
   OIDC_TOKEN_IDENTIFIER_FIELD = "preferred_username",
+  API_KEY_SERVICE_URL = "",
+  API_KEY_IDENTIFIER_FIELD = "_id",
 } = process.env;
 
 // Only used for login
