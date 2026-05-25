@@ -20,7 +20,10 @@ import {
   OIDC_JWKS_URI,
   OIDC_IDENTIFIER_FIELD,
   OIDC_TOKEN_IDENTIFIER_FIELD,
+  API_KEY_SERVICE_URL,
+  API_KEY_IDENTIFIER_FIELD,
 } from "../../config";
+import axios from "axios";
 import createJwksClient from "jwks-rsa";
 import {
   getUserFromCache,
@@ -152,19 +155,49 @@ const authenticateOidcToken = async (token: string, kid: string) => {
   return user;
 };
 
+const authenticateApiKey = async (apiKey: string) => {
+  if (!API_KEY_SERVICE_URL)
+    throw createHttpError(401, `API key authentication not configured`);
+
+  const { data } = await axios.post(`${API_KEY_SERVICE_URL}/validate`, {
+    api_key: apiKey,
+  });
+
+  const { user_id } = data;
+  if (!user_id)
+    throw createHttpError(401, `API key validation returned no user_id`);
+
+  let user = await getUserFromCache(user_id);
+  if (!user) {
+    const query = `
+      MATCH (user:User)
+      WHERE user.${API_KEY_IDENTIFIER_FIELD} = $identifier
+      RETURN properties(user) as user`;
+    user = await get_auth_user(query, { identifier: user_id.toString() });
+    setUserInCache(user, API_KEY_IDENTIFIER_FIELD);
+  }
+
+  return user;
+};
+
 export const middlewareChain = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const token = retrieve_jwt(req, res) as string;
-    const decoded = decode_token(token) as any;
-    const kid = decoded?.header?.kid;
+    const apiKey = req.headers["x-api-key"] as string | undefined;
 
-    res.locals.user = kid
-      ? await authenticateOidcToken(token, kid)
-      : await authenticateLegacyToken(token);
+    if (apiKey) {
+      res.locals.user = await authenticateApiKey(apiKey);
+    } else {
+      const token = retrieve_jwt(req, res) as string;
+      const decoded = decode_token(token) as any;
+      const kid = decoded?.header?.kid;
+      res.locals.user = kid
+        ? await authenticateOidcToken(token, kid)
+        : await authenticateLegacyToken(token);
+    }
 
     next();
   } catch (err) {
