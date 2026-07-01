@@ -1,4 +1,4 @@
-# Account manager
+# User manager
 
 This is a simple user management and authentication microservice used for internal applications. It stores user information in a Neo4J database and provides JWT-based authentication.
 
