@@ -1,10 +1,10 @@
 {
   "name": "account_manager",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "dev": "nodemon index.ts",
-    "build": "tsc --outdir ./build -p . ",
+    "build": "npm run swagger-autogen && tsc --outdir ./build -p .",
     "start": "node ./build/index.js",
     "test": "mocha -r ts-node/register test/*.ts --timeout 10000 --exit",
     "coverage": "nyc mocha -r ts-node/register test/*.ts --timeout 30000 --exit",
