@@ -8,6 +8,7 @@ import {
 import { REDIS_URL } from "../cache";
 import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db";
 import { author } from "../package.json";
+import healthRouter from "./health";
 import router_v1 from "./v1/index";
 import router_v2 from "./v2/index";
 import router_v3 from "./v3/index";
@@ -66,6 +67,7 @@ router.get("/", (req: Request, res: Response) => {
   });
 });
 
+router.use("/health", healthRouter);
 router.use("/", router_v1);
 router.use("/v1", router_v1);
 router.use("/v2", router_v2);
