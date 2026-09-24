@@ -7,12 +7,13 @@ import {
 } from "../ldap";
 import { REDIS_URL } from "../cache";
 import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db";
-import { version, author } from "../package.json";
+import { author } from "../package.json";
 import router_v1 from "./v1/index";
 import router_v2 from "./v2/index";
 import router_v3 from "./v3/index";
 import { Request, Response } from "express";
 import {
+  APP_VERSION,
   userQueryIdentifierFields,
   JWT_EXPIRATION_TIME,
   loginIdentifierFields,
@@ -29,7 +30,7 @@ router.get("/", (req: Request, res: Response) => {
   res.send({
     application_name: "Account manager",
     author,
-    version,
+    version: APP_VERSION,
     neo4j: {
       url: NEO4J_URL,
       connected: get_neo4j_connected(),

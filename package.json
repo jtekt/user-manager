@@ -1,6 +1,5 @@
 {
   "name": "account_manager",
-  "version": "6.1.2",
   "description": "",
   "main": "index.js",
   "scripts": {
