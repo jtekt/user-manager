@@ -19,8 +19,7 @@ spec:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 15
-            periodSeconds: 10
+            periodSeconds: 5
           env:
             # - name: NEO4J_URL
             #   value: bolt://neo4j
