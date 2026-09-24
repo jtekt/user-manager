@@ -6,7 +6,11 @@ import {
   LDAP_USERNAME_ATTRIBUTE,
 } from "../ldap";
 import { REDIS_URL } from "../cache";
-import { NEO4J_URL, get_connected as get_neo4j_connected } from "../db";
+import {
+  NEO4J_URL,
+  get_connection_status as get_neo4j_connection_status,
+  get_initialized as get_neo4j_initialized,
+} from "../db";
 import { author } from "../package.json";
 import healthRouter from "./health";
 import router_v1 from "./v1/index";
@@ -27,14 +31,15 @@ import {
 } from "../config";
 const router = Router();
 
-router.get("/", (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   res.send({
     application_name: "Account manager",
     author,
     version: APP_VERSION,
     neo4j: {
       url: NEO4J_URL,
-      connected: get_neo4j_connected(),
+      connected: await get_neo4j_connection_status(),
+      initialized: get_neo4j_initialized(),
     },
     smtp: {
       host: SMTP_HOST,

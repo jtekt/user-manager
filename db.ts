@@ -19,20 +19,16 @@ export const drivers = {
 
 export const driver = drivers.v2; // alias
 
-let connected = false;
+// Set once the DB setup (admin account, IDs, constraints) has completed
+let initialized = false;
 
-const get_connection_status = async () => {
-  const session = driver.session();
+// Live check: whether Neo4J can be reached right now
+export const get_connection_status = async () => {
   try {
-    console.log(`[Neo4J] Testing connection...`);
-    await session.run("RETURN 1");
-    console.log(`[Neo4J] Connection successful`);
+    await driver.verifyConnectivity();
     return true;
-  } catch (e) {
-    console.log(`[Neo4J] Connection failed`);
+  } catch {
     return false;
-  } finally {
-    session.close();
   }
 };
 
@@ -119,18 +115,20 @@ const create_constraints = async () => {
   }
 };
 
+// Retries until the setup succeeds, so a DB that is not up yet never crashes the app
 export const init = async () => {
-  if (await get_connection_status()) {
-    connected = true;
+  try {
     console.log("[Neo4J] Initializing DB");
     await create_admin_if_not_exists();
     await set_ids_to_nodes_without_ids();
     await create_constraints();
+    initialized = true;
     console.log(`[Neo4J] DB initialized`);
-  } else {
+  } catch (error) {
+    console.error("[Neo4J] DB initialization failed, retrying in 10s", error);
     setTimeout(init, 10000);
   }
 };
 
 export const url = NEO4J_URL;
-export const get_connected = () => connected;
+export const get_initialized = () => initialized;
