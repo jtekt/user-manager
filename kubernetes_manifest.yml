@@ -49,8 +49,6 @@ spec:
           envFrom:
             - secretRef:
                 name: environment-variables
-      imagePullSecrets:
-        - name: ${K8S_ECR_SECRET}
 ---
 apiVersion: v1
 kind: Service
