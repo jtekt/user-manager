@@ -37,7 +37,7 @@ export const verify_token = async (token: string) => {
   try {
     return await jwtVerify(token, JWT_SECRET!, {})
   } catch {
-    throw createHttpError(403, `Invalid JWT`)
+    throw createHttpError(401, `Invalid JWT`)
   }
 }
 
@@ -45,7 +45,7 @@ export const verify_token_oidc = async (token: string, key: string) => {
   try {
     return await jwtVerify(token, key as any, {})
   } catch {
-    throw createHttpError(403, `Invalid JWT OIDC`)
+    throw createHttpError(401, `Invalid JWT OIDC`)
   }
 }
 
