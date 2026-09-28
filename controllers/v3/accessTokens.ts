@@ -90,7 +90,8 @@ export const decodeToken = async (
 ) => {
   const { token } = req.body;
   if (!token) throw createHttpError(400, `No token provided`);
-  const decodedToken = await verify_token(token);
+  // The token to decode is not the caller's own, so an invalid one stays a 403
+  const decodedToken = await verify_token(token).catch(() => null);
   if (!decodedToken) throw createHttpError(403, `Invalid token`);
   res.send(decodedToken);
 };

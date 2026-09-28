@@ -34,6 +34,14 @@ describe("/v3/users", () => {
       expect(status).to.equal(401);
     });
 
+    it("Should answer 401, not 403, to an invalid token", async () => {
+      const { status } = await request(app)
+        .get("/v3/users/")
+        .set("Authorization", "Bearer invalid-token");
+
+      expect(status).to.equal(401);
+    });
+
     it("Should allow authenticated users to query users", async () => {
       const { status } = await request(app)
         .get("/v3/users/")
